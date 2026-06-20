@@ -4,9 +4,10 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
+import { Icon, Avatar, Badge, CircularScore, SEV } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
 import { RunCostBadge } from "@/components/RunCostBadge";
+import { FindingsPopover } from "@/components/FindingsPopover";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
@@ -15,6 +16,9 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
   const t = useTranslations("prReview");
   const router = useRouter();
   const [h, setH] = React.useState(false);
+  const [findingsHover, setFindingsHover] = React.useState(false);
+  const findingsCellRef = React.useRef<HTMLDivElement>(null);
+  const [popoverCoords, setPopoverCoords] = React.useState<{ top: number; left: number } | null>(null);
   const st = STATUS_META[pr.status] ?? STATUS_META.needs_review!;
   const { size, lines } = sizeOf(pr);
   const reviewed = pr.score != null; // null score ⇒ PR has never been reviewed
@@ -52,6 +56,36 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           <CircularScore score={pr.score!} size={34} stroke={3} />
         ) : (
           <span style={s.muted}>—</span>
+        )}
+      </div>
+      <div
+        ref={findingsCellRef}
+        style={s.findingsCell}
+        onMouseEnter={() => {
+          const rect = findingsCellRef.current?.getBoundingClientRect();
+          if (rect) setPopoverCoords({ top: rect.bottom + 6, left: rect.left });
+          setFindingsHover(true);
+        }}
+        onMouseLeave={() => setFindingsHover(false)}
+      >
+        {pr.findings ? (
+          (["CRITICAL", "WARNING", "SUGGESTION"] as const)
+            .filter((sev) => (pr.findings![sev] ?? 0) > 0)
+            .map((sev) => {
+              const meta = SEV[sev];
+              const I = Icon[meta.icon];
+              return (
+                <span key={sev} style={s.findingsPip(meta.c)}>
+                  <I size={12} />
+                  {pr.findings![sev]}
+                </span>
+              );
+            })
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+        {findingsHover && popoverCoords && pr.findings?.items && pr.findings.items.length > 0 && (
+          <FindingsPopover items={pr.findings.items} top={popoverCoords.top} left={popoverCoords.left} />
         )}
       </div>
       <div>

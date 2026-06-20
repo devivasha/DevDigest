@@ -24,6 +24,11 @@ so the next agent/session doesn't relearn it. Append-only — see the
 
 ## Session Notes
 
+### 2026-06-20
+- Added FINDINGS column to PR list (`PrMeta.findings` = `{CRITICAL, WARNING, SUGGESTION, items[5]}`): server does 3 queries in `GET /repos/:id/pulls` (runs, sev counts, preview items); client renders severity pips in `PRRow` + `FindingsPopover` on hover.
+- Extended `RunSummary` with `severity_counts` + `findings_preview`: `listRunsForPull` now does 3 queries (runs, sev counts, preview items) — same pattern as the PR-list endpoint.
+- Severity filter bar on PR Detail page: filter state lifted to `FindingsTab`, prop-drilled through `ReviewRunAccordion` → `FindingsPanel` → `visibleFindings(findings, hideLow, severityFilter)`.
+
 ### 2026-06-14
 - Re-introduced per-run cost (USD) end-to-end (lesson reversing the earlier removal in `d45ab0d`/`58c6ac7`): `cost_usd` column on `agent_runs` (migration 0010), captured in `run-executor` (was discarding `outcome.costUsd`), surfaced in `RunSummary`/`RunStats`/`PrMeta`.
 - Decision: PR-list COST = sum of the latest review batch via a 120s window heuristic (no batch id in schema). Cost persisted (accurate `outcome.costUsd`), not recomputed; historical runs → null → "—".

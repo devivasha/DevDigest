@@ -113,5 +113,23 @@ export const RunSummary = z.object({
   // findings that trip the agent's gate. Null on failed/cancelled runs.
   score: z.number().int().nullable(),
   blockers: z.number().int().nullable(),
+  // Per-severity finding counts + top items for the timeline hover popover.
+  severity_counts: z
+    .object({ CRITICAL: z.number(), WARNING: z.number(), SUGGESTION: z.number() })
+    .nullish(),
+  findings_preview: z
+    .array(
+      z.object({
+        id: z.string(),
+        severity: z.string(),
+        category: z.string(),
+        title: z.string(),
+        file: z.string(),
+        start_line: z.number(),
+        confidence: z.number(),
+        rationale: z.string(),
+      }),
+    )
+    .nullish(),
 });
 export type RunSummary = z.infer<typeof RunSummary>;
