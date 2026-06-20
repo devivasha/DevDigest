@@ -1,0 +1,13 @@
+{
+  "name": "Settings renders the API Keys and Feature Models sections",
+  "description": "Loads /settings/api-keys and /settings/models and confirms each section renders its title. Exercises the settings route and the refactored SettingsView (SettingsApiKeys / SettingsModels). Read-only seeded data (no model call).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/settings/api-keys"], "label": "load the API Keys settings section" },
+    { "cmd": ["wait", "--url", "/settings/api-keys"], "label": "api-keys route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "settings fetch settles" },
+    { "cmd": ["wait", "--text", "API Keys"], "label": "the API Keys section renders" },
+    { "cmd": ["open", "{BASE}/settings/models"], "label": "load the Feature Models settings section" },
+    { "cmd": ["wait", "--url", "/settings/models"], "label": "models route reached" },
+    { "cmd": ["wait", "--text", "Feature Models"], "label": "the Feature Models section renders" }
+  ]
+}
