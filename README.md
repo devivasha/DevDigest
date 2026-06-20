@@ -123,7 +123,7 @@ pnpm db:migrate          # apply migrations (NOT run automatically on boot)
 pnpm db:seed             # idempotent demo data (optional)
 pnpm dev                 # API on :3001
 
-cd ../client && pnpm install &&pnpm dev               # web on :3000
+cd ../client && pnpm install && pnpm dev               # web on :3000
 ```
 
 ## Useful scripts
@@ -143,7 +143,7 @@ path filter — full strategy in **[`TESTING.md`](TESTING.md)**.
 | server unit (hermetic) | `server-unit.yml` | no |
 | server integration (real Postgres) | `server-integration.yml` | yes |
 | reviewer-core (engine) | `reviewer-core.yml` | no |
-| web e2e (agent-browser, real sta ck) | `e2e-web.yml` | yes |
+| web e2e (agent-browser, real stack) | `e2e-web.yml` | yes |
 
 Server tests split by filename: `*.it.test.ts` are DB-backed (testcontainers
 Postgres); everything else is hermetic. The browser e2e flows live in
