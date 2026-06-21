@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"Session ending — run /engineering-insights to capture any non-obvious findings, gotchas, or working patterns discovered this session. If nothing substantial came up, skip it. See CLAUDE.md session protocol.\"}'",
+            "statusMessage": "Reminding Claude to run /engineering-insights..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/skills/pr-self-review/scripts/check-gate.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git status*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+      "Bash(git fetch*)",
+      "Bash(git pull*)",
+      "Bash(git push*)",
+      "Bash(pnpm*)",
+      "Bash(npm*)",
+      "Bash(node*)",
+      "Bash(tsx*)",
+      "Bash(docker ps*)",
+      "Bash(docker exec*)",
+      "Bash(curl*)",
+      "Bash(cat*)",
+      "Bash(ls*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(echo*)",
+      "Read(*)",
+      "Write(src/**)",
+      "Write(.claude/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(sudo*)",
+      "Bash(chmod 777*)",
+      "Bash(git push --force*)",
+      "Bash(docker rm*)",
+      "Bash(dropdb*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}

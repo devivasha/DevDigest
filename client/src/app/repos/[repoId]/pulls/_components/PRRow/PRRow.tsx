@@ -4,24 +4,35 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore, SEV } from "@devdigest/ui";
+import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
 import { RunCostBadge } from "@/components/RunCostBadge";
-import { FindingsPopover } from "@/components/FindingsPopover";
+import { FindingsCountChips, countBySeverity, totalCount } from "@/components/FindingsCountChips";
+import { FindingsHoverCard } from "@/components/FindingsHoverCard";
+import { FindingPreview } from "@/components/FindingPreview";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
 
-export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
+export function PRRow({
+  pr,
+  repoId,
+  repoFullName,
+}: {
+  pr: PrMeta;
+  repoId: string;
+  /** owner/repo — lets the findings popover deep-link file:line to GitHub. */
+  repoFullName?: string | null;
+}) {
   const t = useTranslations("prReview");
   const router = useRouter();
   const [h, setH] = React.useState(false);
-  const [findingsHover, setFindingsHover] = React.useState(false);
-  const findingsCellRef = React.useRef<HTMLDivElement>(null);
-  const [popoverCoords, setPopoverCoords] = React.useState<{ top: number; left: number } | null>(null);
   const st = STATUS_META[pr.status] ?? STATUS_META.needs_review!;
   const { size, lines } = sizeOf(pr);
   const reviewed = pr.score != null; // null score ⇒ PR has never been reviewed
+  const findings = pr.findings ?? [];
+  const findingCounts = countBySeverity(findings);
+  const findingTotal = totalCount(findingCounts);
   return (
     <div
       onMouseEnter={() => setH(true)}
@@ -58,34 +69,28 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           <span style={s.muted}>—</span>
         )}
       </div>
-      <div
-        ref={findingsCellRef}
-        style={s.findingsCell}
-        onMouseEnter={() => {
-          const rect = findingsCellRef.current?.getBoundingClientRect();
-          if (rect) setPopoverCoords({ top: rect.bottom + 6, left: rect.left });
-          setFindingsHover(true);
-        }}
-        onMouseLeave={() => setFindingsHover(false)}
-      >
-        {pr.findings ? (
-          (["CRITICAL", "WARNING", "SUGGESTION"] as const)
-            .filter((sev) => (pr.findings![sev] ?? 0) > 0)
-            .map((sev) => {
-              const meta = SEV[sev];
-              const I = Icon[meta.icon];
-              return (
-                <span key={sev} style={s.findingsPip(meta.c)}>
-                  <I size={12} />
-                  {pr.findings![sev]}
-                </span>
-              );
-            })
-        ) : (
+      <div style={s.findingsCell}>
+        {findingTotal === 0 ? (
           <span style={s.muted}>—</span>
-        )}
-        {findingsHover && popoverCoords && pr.findings?.items && pr.findings.items.length > 0 && (
-          <FindingsPopover items={pr.findings.items} top={popoverCoords.top} left={popoverCoords.left} />
+        ) : (
+          <FindingsHoverCard
+            align="left"
+            anchor={<FindingsCountChips counts={findingCounts} size={14} />}
+            header={t("findingsPopover.header", { count: findingTotal })}
+          >
+            {findings.map((f) => (
+              <FindingPreview
+                key={f.id}
+                f={f}
+                repoFullName={repoFullName}
+                headSha={pr.head_sha}
+                prNumber={pr.number}
+                onSelect={(id) =>
+                  router.push(`/repos/${repoId}/pulls/${pr.number}?tab=findings&finding=${id}`)
+                }
+              />
+            ))}
+          </FindingsHoverCard>
         )}
       </div>
       <div>
