@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -113,8 +113,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
     // Latest-review SCORE per PR for the list's score ring. Computed on read
     // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // grouping is cheap.
     const prIds = rows.map((r) => r.id);
     const latestReviewByPr = new Map<string, { score: number | null }>();
     if (prIds.length > 0) {
@@ -126,6 +125,86 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       // Rows are newest-first → first seen per PR is the latest review.
       for (const rv of reviewRows) {
         if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score });
+      }
+    }
+
+    // Non-dismissed finding counts per PR, grouped by severity (FINDINGS column),
+    // plus top-5 items per PR for the hover popover.
+    type SevCounts = { CRITICAL: number; WARNING: number; SUGGESTION: number };
+    type FindingItem = {
+      id: string; severity: string; category: string; title: string;
+      file: string; start_line: number; confidence: number; rationale: string;
+    };
+    const findingsByPr = new Map<string, SevCounts>();
+    const findingItemsByPr = new Map<string, FindingItem[]>();
+    if (prIds.length > 0) {
+      const findingRows = await container.db
+        .select({
+          prId: t.reviews.prId,
+          severity: t.findings.severity,
+          cnt: sql<number>`cast(count(*) as int)`,
+        })
+        .from(t.findings)
+        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+        .where(
+          and(
+            inArray(t.reviews.prId, prIds),
+            isNull(t.findings.dismissedAt),
+          ),
+        )
+        .groupBy(t.reviews.prId, t.findings.severity);
+      for (const row of findingRows) {
+        if (!row.prId) continue;
+        const existing = findingsByPr.get(row.prId) ?? { CRITICAL: 0, WARNING: 0, SUGGESTION: 0 };
+        const sev = row.severity as keyof SevCounts;
+        if (sev in existing) existing[sev] = row.cnt;
+        findingsByPr.set(row.prId, existing);
+      }
+
+      // Top-5 non-dismissed findings per PR sorted by severity weight for the
+      // hover popover. Fetched in one query; JS-side grouping caps per PR.
+      const SEV_WEIGHT: Record<string, number> = { CRITICAL: 0, WARNING: 1, SUGGESTION: 2 };
+      const itemRows = await container.db
+        .select({
+          prId: t.reviews.prId,
+          id: t.findings.id,
+          severity: t.findings.severity,
+          category: t.findings.category,
+          title: t.findings.title,
+          file: t.findings.file,
+          startLine: t.findings.startLine,
+          confidence: t.findings.confidence,
+          rationale: t.findings.rationale,
+        })
+        .from(t.findings)
+        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+        .where(
+          and(
+            inArray(t.reviews.prId, prIds),
+            isNull(t.findings.dismissedAt),
+          ),
+        );
+      for (const row of itemRows) {
+        if (!row.prId) continue;
+        const list = findingItemsByPr.get(row.prId) ?? [];
+        list.push({
+          id: row.id,
+          severity: row.severity,
+          category: row.category,
+          title: row.title,
+          file: row.file,
+          start_line: row.startLine,
+          confidence: row.confidence,
+          rationale: row.rationale,
+        });
+        findingItemsByPr.set(row.prId, list);
+      }
+      // Sort by severity weight and cap at 5 per PR.
+      for (const [prId, list] of findingItemsByPr) {
+        findingItemsByPr.set(
+          prId,
+          list.sort((a, b) => (SEV_WEIGHT[a.severity] ?? 9) - (SEV_WEIGHT[b.severity] ?? 9)).slice(0, 5),
+        );
       }
     }
 
@@ -194,6 +273,9 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
         cost_usd: costByPr.has(r.id) ? costByPr.get(r.id)! : null,
+        findings: findingsByPr.has(r.id)
+          ? { ...findingsByPr.get(r.id)!, items: findingItemsByPr.get(r.id) ?? [] }
+          : null,
       };
     });
   });

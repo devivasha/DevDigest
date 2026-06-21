@@ -2,9 +2,11 @@
 
 import React, { useCallback } from "react";
 import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
+import type { Severity } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { SeverityFilterBar } from "./SeverityFilterBar";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -70,6 +72,16 @@ export function FindingsTab({
   const handleGoToReview = useCallback((runId: string) => {
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
+
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
+
+  const allFindings = React.useMemo(() => runs.flatMap((r) => r.findings), [runs]);
+  const sevCounts = React.useMemo(() => {
+    const levels: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];
+    return Object.fromEntries(
+      levels.map((s) => [s, allFindings.filter((f) => f.severity === s).length]),
+    ) as Partial<Record<Severity, number>>;
+  }, [allFindings]);
 
   return (
     <section>
@@ -144,6 +156,7 @@ export function FindingsTab({
       >
         Review runs
       </SectionLabel>
+      <SeverityFilterBar counts={sevCounts} active={severityFilter} onChange={setSeverityFilter} />
       {runs.length === 0 ? (
         reviewRunning || liveRunIds.length > 0 ? null : (
           <EmptyState
@@ -164,6 +177,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            severityFilter={severityFilter}
           />
         ))
       )}

@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { RunSummary, RunTrace } from '@devdigest/shared';
@@ -48,6 +48,74 @@ export async function listRunsForPull(
     .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
     .where(and(eq(t.agentRuns.workspaceId, workspaceId), eq(t.agentRuns.prId, prId)))
     .orderBy(desc(t.agentRuns.ranAt));
+
+  const runIds = rows.map((r) => r.run.id);
+
+  // Severity counts + top-5 preview items per run for the timeline hover popover.
+  // findings → reviews (run_id) — one IN-query, JS grouping.
+  type SevCounts = { CRITICAL: number; WARNING: number; SUGGESTION: number };
+  type PreviewItem = {
+    id: string; severity: string; category: string; title: string;
+    file: string; start_line: number; confidence: number; rationale: string;
+  };
+  const sevByRun = new Map<string, SevCounts>();
+  const previewByRun = new Map<string, PreviewItem[]>();
+
+  if (runIds.length > 0) {
+    const sevRows = await db
+      .select({
+        runId: t.reviews.runId,
+        severity: t.findings.severity,
+        cnt: sql<number>`cast(count(*) as int)`,
+      })
+      .from(t.findings)
+      .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+      .where(and(inArray(t.reviews.runId, runIds), isNull(t.findings.dismissedAt)))
+      .groupBy(t.reviews.runId, t.findings.severity);
+
+    for (const row of sevRows) {
+      if (!row.runId) continue;
+      const existing = sevByRun.get(row.runId) ?? { CRITICAL: 0, WARNING: 0, SUGGESTION: 0 };
+      const sev = row.severity as keyof SevCounts;
+      if (sev in existing) existing[sev] = row.cnt;
+      sevByRun.set(row.runId, existing);
+    }
+
+    const SEV_WEIGHT: Record<string, number> = { CRITICAL: 0, WARNING: 1, SUGGESTION: 2 };
+    const itemRows = await db
+      .select({
+        runId: t.reviews.runId,
+        id: t.findings.id,
+        severity: t.findings.severity,
+        category: t.findings.category,
+        title: t.findings.title,
+        file: t.findings.file,
+        startLine: t.findings.startLine,
+        confidence: t.findings.confidence,
+        rationale: t.findings.rationale,
+      })
+      .from(t.findings)
+      .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+      .where(and(inArray(t.reviews.runId, runIds), isNull(t.findings.dismissedAt)));
+
+    for (const row of itemRows) {
+      if (!row.runId) continue;
+      const list = previewByRun.get(row.runId) ?? [];
+      list.push({
+        id: row.id, severity: row.severity, category: row.category,
+        title: row.title, file: row.file, start_line: row.startLine,
+        confidence: row.confidence, rationale: row.rationale,
+      });
+      previewByRun.set(row.runId, list);
+    }
+    for (const [runId, list] of previewByRun) {
+      previewByRun.set(
+        runId,
+        list.sort((a, b) => (SEV_WEIGHT[a.severity] ?? 9) - (SEV_WEIGHT[b.severity] ?? 9)).slice(0, 5),
+      );
+    }
+  }
+
   return rows.map(({ run, agentName }) => ({
     run_id: run.id,
     agent_id: run.agentId,
@@ -65,6 +133,8 @@ export async function listRunsForPull(
     ran_at: run.ranAt ? run.ranAt.toISOString() : null,
     score: run.score,
     blockers: run.blockers,
+    severity_counts: sevByRun.get(run.id) ?? null,
+    findings_preview: previewByRun.get(run.id) ?? null,
   }));
 }
 
