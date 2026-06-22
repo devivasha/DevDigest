@@ -171,6 +171,7 @@ export type SkillImportPreview = z.infer<typeof SkillImportPreview>;
 // ---- Conventions ----
 export const ConventionCandidate = z.object({
   id: z.string(),
+  category: z.string(),
   rule: z.string(),
   evidence_path: z.string(),
   evidence_snippet: z.string(),

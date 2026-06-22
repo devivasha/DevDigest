@@ -85,6 +85,13 @@
       "when": 1781741443959,
       "tag": "0011_far_stryfe",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782105484083,
+      "tag": "0012_salty_red_wolf",
+      "breakpoints": true
     }
   ]
 }

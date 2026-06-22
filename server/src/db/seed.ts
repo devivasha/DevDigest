@@ -8,6 +8,7 @@ import {
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
   TEST_QUALITY_REVIEWER_PROMPT,
+  API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 
 /** Default provider/model for the built-in reviewer agents. */
@@ -410,6 +411,143 @@ Flag tests where mocking undermines the test's validity.
       enabled: false,
       version: 1,
     },
+    {
+      name: 'breaking-change',
+      description: 'Flag removal or signature change of public routes/endpoints.',
+      type: 'convention' as const,
+      source: 'manual' as const,
+      body: `# breaking-change
+
+Flag any change that removes a previously-available public endpoint, renames a path parameter, changes an HTTP method, or adds a new **required** request parameter to an existing route — all of which break existing callers without a prior deprecation window.
+
+## Good Example
+
+\`\`\`diff
+// Adding an OPTIONAL query parameter — additive, non-breaking.
+- GET /users/:id
++ GET /users/:id?include_deleted=boolean
+\`\`\`
+
+## Bad Example
+
+\`\`\`diff
+// Renaming a path parameter — all callers hardcoded to /users/:userId now 404.
+- router.get('/users/:userId', handler)
++ router.get('/users/:accountId', handler)
+\`\`\`
+
+\`\`\`diff
+// Removing a route with no deprecation notice.
+- app.get('/v1/orders/:id', getOrder)
+\`\`\`
+
+Flag these as CRITICAL and suggest: keep the old route alive, bump the major version, and publish a deprecation notice pointing to the replacement.`,
+      enabled: true,
+      version: 1,
+    },
+    {
+      name: 'response-schema',
+      description: 'Flag changes to response body shape (field removal, rename, type change).',
+      type: 'convention' as const,
+      source: 'manual' as const,
+      body: `# response-schema
+
+Flag changes to the shape of an API response body: removed fields, renamed fields, type changes, or fields changing from optional to required. Adding a new optional field is safe. Everything else requires a major version bump.
+
+## Good Example
+
+\`\`\`diff
+// Adding a new optional field — safe; old consumers ignore it.
+- return { id, name, email }
++ return { id, name, email, avatar_url: user.avatarUrl ?? null }
+\`\`\`
+
+## Bad Example
+
+\`\`\`diff
+// Removing a field — any consumer accessing .email now gets undefined.
+- return { id, name, email }
++ return { id, name }
+\`\`\`
+
+\`\`\`diff
+// Renaming a field — callers referencing .userId now get undefined.
+- return { userId: user.id, name: user.name }
++ return { accountId: user.id, name: user.name }
+\`\`\`
+
+Flag any of the above as CRITICAL. Suggest dual-emit of old + new field during transition, with explicit deprecation markers.`,
+      enabled: true,
+      version: 1,
+    },
+    {
+      name: 'semver-discipline',
+      description: 'Flag missing major version bump when a breaking change is introduced.',
+      type: 'convention' as const,
+      source: 'manual' as const,
+      body: `# semver-discipline
+
+Flag PRs that introduce a breaking API change without bumping the major version in package.json. Consumers pinned to the current \`^x.y.z\` range will receive the breaking change silently.
+
+| Change type | Required bump |
+|---|---|
+| Breaking change | **major** (x+1.0.0) |
+| New optional field / new route | minor |
+| Bug fix / internal refactor | patch |
+
+## Good Example
+
+\`\`\`diff
+// Breaking: POST /orders now requires \`currency\` field.
+- "version": "1.4.2"
++ "version": "2.0.0"
+\`\`\`
+
+## Bad Example
+
+\`\`\`diff
+// Breaking: GET /users/:id field \`email\` removed — but only a patch bump.
+- "version": "1.4.2"
++ "version": "1.4.3"
+\`\`\`
+
+Flag as CRITICAL when a confirmed breaking change is present but the major version is not bumped.`,
+      enabled: true,
+      version: 1,
+    },
+    {
+      name: 'deprecation-policy',
+      description: 'Flag silent removal of routes/fields without prior deprecation marking.',
+      type: 'convention' as const,
+      source: 'manual' as const,
+      body: `# deprecation-policy
+
+Flag silent removal of API surface — routes, fields, or parameters — without a preceding @deprecated marker and migration window. The correct pattern: mark deprecated → keep alive for one major version → remove in next major.
+
+## Good Example
+
+\`\`\`typescript
+/**
+ * @deprecated Use GET /v2/users/:id instead. Will be removed in v3.0.
+ */
+app.get('/v1/users/:id', async (req, reply) => {
+  reply.header('X-Deprecated', 'Use /v2/users/:id');
+  reply.header('Sunset', 'Sat, 01 Jan 2026 00:00:00 GMT');
+  return legacyGetUser(req.params.id);
+});
+\`\`\`
+
+## Bad Example
+
+\`\`\`diff
+// Route silently deleted. Callers receive 404 with no prior warning.
+- app.get('/v1/users/:id', getUser)
+\`\`\`
+
+Flag all silent removals as CRITICAL. Suggest restoring the surface, adding @deprecated + Sunset header, and referencing the replacement.`,
+      enabled: true,
+      version: 1,
+    },
   ];
 
   // Seed skills idempotently
@@ -462,6 +600,28 @@ Flag tests where mocking undermines the test's validity.
     for (const [i, name] of tqSkillsToLink.entries()) {
       if (skillIds[name]) {
         await db.insert(t.agentSkills).values({ agentId: tqRow!.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
+      }
+    }
+  }
+
+  // ---- API Contract Reviewer + linked skills ----
+  const [apiAgent] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'API Contract Reviewer')));
+  if (!apiAgent) {
+    const [apiRow] = await db.insert(t.agents).values({
+      workspaceId,
+      name: 'API Contract Reviewer',
+      description: 'Catches breaking API changes, schema violations, and semver/deprecation failures.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: API_CONTRACT_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    }).returning();
+    const apiSkillsToLink = ['breaking-change', 'response-schema', 'semver-discipline', 'deprecation-policy'];
+    for (const [i, name] of apiSkillsToLink.entries()) {
+      if (skillIds[name]) {
+        await db.insert(t.agentSkills).values({ agentId: apiRow!.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
       }
     }
   }
