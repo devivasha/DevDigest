@@ -582,9 +582,9 @@ Flag all silent removals as CRITICAL. Suggest restoring the surface, adding @dep
   }
 
   // ---- Test Quality Reviewer + linked skills ----
-  const [testAgent] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
-  if (!testAgent) {
-    const [tqRow] = await db.insert(t.agents).values({
+  let [tqAgent] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
+  if (!tqAgent) {
+    [tqAgent] = await db.insert(t.agents).values({
       workspaceId,
       name: 'Test Quality Reviewer',
       description: 'Reviews PRs for test coverage gaps, mock overuse, and flaky patterns.',
@@ -595,19 +595,22 @@ Flag all silent removals as CRITICAL. Suggest restoring the surface, adding @dep
       version: 1,
       createdBy: userId,
     }).returning();
-    // Link 3 skills (4th will be imported live in demo)
+  }
+  // Always link skills — idempotent (onConflictDoNothing), runs on every seed
+  // so links are created even when the agent pre-existed from an earlier seed.
+  if (tqAgent) {
     const tqSkillsToLink = ['uncovered-branches', 'edge-case-coverage', 'mock-overuse-gate'];
     for (const [i, name] of tqSkillsToLink.entries()) {
       if (skillIds[name]) {
-        await db.insert(t.agentSkills).values({ agentId: tqRow!.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
+        await db.insert(t.agentSkills).values({ agentId: tqAgent.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
       }
     }
   }
 
   // ---- API Contract Reviewer + linked skills ----
-  const [apiAgent] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'API Contract Reviewer')));
+  let [apiAgent] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'API Contract Reviewer')));
   if (!apiAgent) {
-    const [apiRow] = await db.insert(t.agents).values({
+    [apiAgent] = await db.insert(t.agents).values({
       workspaceId,
       name: 'API Contract Reviewer',
       description: 'Catches breaking API changes, schema violations, and semver/deprecation failures.',
@@ -618,10 +621,12 @@ Flag all silent removals as CRITICAL. Suggest restoring the surface, adding @dep
       version: 1,
       createdBy: userId,
     }).returning();
+  }
+  if (apiAgent) {
     const apiSkillsToLink = ['breaking-change', 'response-schema', 'semver-discipline', 'deprecation-policy'];
     for (const [i, name] of apiSkillsToLink.entries()) {
       if (skillIds[name]) {
-        await db.insert(t.agentSkills).values({ agentId: apiRow!.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
+        await db.insert(t.agentSkills).values({ agentId: apiAgent.id, skillId: skillIds[name]!, order: i }).onConflictDoNothing();
       }
     }
   }
