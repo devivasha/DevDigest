@@ -35,7 +35,7 @@ export async function runMigrations(databaseUrl: string): Promise<void> {
 }
 
 // CLI entrypoint — use pathToFileURL so spaces in the path are handled correctly
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error('DATABASE_URL is required');

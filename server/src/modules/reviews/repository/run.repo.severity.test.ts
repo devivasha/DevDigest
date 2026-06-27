@@ -85,9 +85,9 @@ describe('listRunsForPull — severity aggregation', () => {
 
     const [result] = await listRunsForPull(db, 'ws-1', 'pr-1');
 
-    expect(result.findings_critical).toBe(2);
-    expect(result.findings_warning).toBe(3);
-    expect(result.findings_suggestion).toBe(1);
+    expect(result!.findings_critical).toBe(2);
+    expect(result!.findings_warning).toBe(3);
+    expect(result!.findings_suggestion).toBe(1);
   });
 
   it('returns 0 for severities not present in findings', async () => {
@@ -98,9 +98,9 @@ describe('listRunsForPull — severity aggregation', () => {
 
     const [result] = await listRunsForPull(db, 'ws-1', 'pr-1');
 
-    expect(result.findings_critical).toBe(4);
-    expect(result.findings_warning).toBe(0);
-    expect(result.findings_suggestion).toBe(0);
+    expect(result!.findings_critical).toBe(4);
+    expect(result!.findings_warning).toBe(0);
+    expect(result!.findings_suggestion).toBe(0);
   });
 
   it('assigns counts only to the matching run (multiple runs)', async () => {
@@ -138,8 +138,8 @@ describe('listRunsForPull — severity aggregation', () => {
 
     const [result] = await listRunsForPull(db, 'ws-1', 'pr-1');
 
-    expect(result.findings_critical).toBe(0);
-    expect(result.findings_warning).toBe(0);
-    expect(result.findings_suggestion).toBe(0);
+    expect(result!.findings_critical).toBe(0);
+    expect(result!.findings_warning).toBe(0);
+    expect(result!.findings_suggestion).toBe(0);
   });
 });
