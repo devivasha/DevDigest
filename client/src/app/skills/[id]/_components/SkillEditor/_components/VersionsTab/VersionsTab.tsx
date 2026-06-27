@@ -1,14 +1,14 @@
 "use client";
 import React from "react";
-import { Button, Badge, Skeleton } from "@devdigest/ui";
+import { Button, Skeleton } from "@devdigest/ui";
 import { useSkillVersions, useRestoreSkillVersion, useSkill } from "../../../../../../../lib/hooks/skills";
 
-function SimpleDiff({ oldText, newText }: { oldText: string; newText: string }) {
+function LineDiff({ oldText, newText }: { oldText: string; newText: string }) {
   const oldLines = oldText.split("\n");
   const newLines = newText.split("\n");
   const maxLines = Math.max(oldLines.length, newLines.length);
   const lines: { kind: "added" | "removed" | "context"; text: string }[] = [];
-  for (let i = 0; i < Math.min(maxLines, 40); i++) {
+  for (let i = 0; i < Math.min(maxLines, 60); i++) {
     const o = oldLines[i] ?? "";
     const n = newLines[i] ?? "";
     if (o !== n) {
@@ -19,16 +19,29 @@ function SimpleDiff({ oldText, newText }: { oldText: string; newText: string }) 
     }
   }
   return (
-    <pre style={{ fontSize: 11, overflow: "auto", maxHeight: 200, margin: 0, lineHeight: 1.6 }}>
+    <pre
+      style={{
+        fontSize: 11,
+        fontFamily: "var(--font-mono)",
+        overflow: "auto",
+        maxHeight: 400,
+        margin: 0,
+        lineHeight: 1.65,
+        padding: "10px 12px",
+        background: "var(--bg-muted)",
+        borderRadius: 4,
+        border: "1px solid var(--border)",
+      }}
+    >
       {lines.map((l, i) => (
         <div
           key={i}
           style={{
             background:
               l.kind === "added"
-                ? "rgba(0,200,100,0.12)"
+                ? "rgba(0,200,100,0.10)"
                 : l.kind === "removed"
-                  ? "rgba(255,80,80,0.12)"
+                  ? "rgba(255,80,80,0.10)"
                   : "transparent",
             color:
               l.kind === "added"
@@ -37,12 +50,38 @@ function SimpleDiff({ oldText, newText }: { oldText: string; newText: string }) 
                   ? "var(--error-text, #f87171)"
                   : "var(--text-secondary)",
             paddingLeft: 4,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
           }}
         >
           {l.kind === "added" ? "+ " : l.kind === "removed" ? "- " : "  "}
           {l.text}
         </div>
       ))}
+    </pre>
+  );
+}
+
+function FullBody({ body }: { body: string }) {
+  return (
+    <pre
+      style={{
+        fontSize: 11,
+        fontFamily: "var(--font-mono)",
+        overflow: "auto",
+        maxHeight: 400,
+        margin: 0,
+        lineHeight: 1.65,
+        padding: "10px 12px",
+        background: "var(--bg-muted)",
+        borderRadius: 4,
+        border: "1px solid var(--border)",
+        color: "var(--text-secondary)",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
+      }}
+    >
+      {body}
     </pre>
   );
 }
@@ -55,48 +94,86 @@ export function VersionsTab({ skillId }: { skillId: string }) {
 
   if (isLoading) return <Skeleton height={200} />;
   if (!versions || versions.length === 0) {
-    return <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No version history yet.</p>;
+    return (
+      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No version history yet.</p>
+    );
   }
 
   const currentVersion = skill?.version;
+  const count = versions.length;
 
   return (
-    <div style={{ maxWidth: 680 }}>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-        Version history · {versions.length} versions
+    <div style={{ maxWidth: 720 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Version history</h2>
+        <span
+          style={{
+            fontSize: 12,
+            background: "var(--bg-muted)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            padding: "2px 10px",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {count} {count === 1 ? "version" : "versions"}
+        </span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 20px" }}>
+        Every save snapshots the body so eval runs stay reproducible against the exact text they scored.
       </p>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 20 }}>
-        Every save snapshots the body so eval runs stay reproducible.
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+      {/* Version rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {versions.map((v, idx) => {
           const prev = versions[idx + 1];
+          const isOpen = diffOpen === v.version;
+          const isCurrent = v.version === currentVersion;
+
           return (
             <div
               key={v.version}
-              style={{ borderRadius: 6, border: "1px solid var(--border)", padding: "10px 14px" }}
+              style={{
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+              }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 13, minWidth: 28 }}>v{v.version}</span>
-                <span style={{ flex: 1, fontSize: 13, color: "var(--text-secondary)" }}>
-                  {v.message ?? "—"}
+              {/* Row */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 16px",
+                  background: "var(--bg-surface)",
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 13, minWidth: 24 }}>
+                  v{v.version}
                 </span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                  {new Date(v.created_at).toLocaleDateString()}
+
+                {isCurrent && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--success, #34d399)" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--success, #34d399)", display: "inline-block" }} />
+                    Current
+                  </span>
+                )}
+
+                <span style={{ flex: 1, fontSize: 12, color: "var(--text-muted)" }}>
+                  {v.created_at ? new Date(v.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : ""}
                 </span>
-                {v.version === currentVersion && (
-                  <Badge color="var(--accent-text)">Current</Badge>
-                )}
-                {prev && (
-                  <Button
-                    kind="secondary"
-                    size="sm"
-                    onClick={() => setDiffOpen(diffOpen === v.version ? null : v.version)}
-                  >
-                    Diff
-                  </Button>
-                )}
-                {v.version !== currentVersion && (
+
+                <Button
+                  kind="secondary"
+                  size="sm"
+                  onClick={() => setDiffOpen(isOpen ? null : v.version)}
+                >
+                  {isOpen ? "Hide" : "Diff"}
+                </Button>
+
+                {!isCurrent && (
                   <Button
                     kind="secondary"
                     size="sm"
@@ -111,16 +188,15 @@ export function VersionsTab({ skillId }: { skillId: string }) {
                   </Button>
                 )}
               </div>
-              {diffOpen === v.version && prev && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    background: "var(--bg-hover)",
-                    borderRadius: 4,
-                    padding: "8px 10px",
-                  }}
-                >
-                  <SimpleDiff oldText={prev.body} newText={v.body} />
+
+              {/* Diff / body panel */}
+              {isOpen && (
+                <div style={{ padding: "0 16px 14px" }}>
+                  {prev ? (
+                    <LineDiff oldText={prev.body} newText={v.body} />
+                  ) : (
+                    <FullBody body={v.body} />
+                  )}
                 </div>
               )}
             </div>
