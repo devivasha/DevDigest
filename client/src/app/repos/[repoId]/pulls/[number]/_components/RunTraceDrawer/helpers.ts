@@ -26,3 +26,8 @@ export function formatSeconds(ms: number): string {
 export function formatTokens(tokensIn: number, tokensOut: number): string {
   return `${(tokensIn / 1000).toFixed(0)}k→${(tokensOut / 1000).toFixed(1)}k`;
 }
+
+/** USD cost or "n/a". */
+export function formatCost(usd: number | null | undefined): string {
+  return usd == null ? "n/a" : `$${usd.toFixed(3)}`;
+}

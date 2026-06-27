@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { Provider } from './knowledge.js';
-import { Finding } from './findings.js';
+import { Provider } from './knowledge';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -74,8 +73,8 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     id: 'conventions',
     label: 'Conventions',
     description: 'Extracts coding conventions from the repo.',
-    defaultProvider: 'anthropic',
-    defaultModel: 'claude-haiku-4-5',
+    defaultProvider: 'openai',
+    defaultModel: 'gpt-5.4',
   },
 ];
 
@@ -169,18 +168,13 @@ export const PrMeta = z.object({
   status: PrStatus,
   opened_at: z.string().nullish(),
   updated_at: z.string().nullish(),
-  // Latest-review score (list endpoint only; null/absent until reviewed).
+  // Latest-review rollup (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
-  // Cost (USD) of the latest review batch (list endpoint only). null/absent
-  // when the PR has no priced run yet; UI shows "—", not "$0".
-  cost_usd: z.number().nullish(),
-  // Findings of the latest review batch (list endpoint only; null/absent until
-  // reviewed). The list shows both per-severity chips (counts derived client-
-  // side) and a hover popover, so it carries the findings themselves rather than
-  // just counts. Same batch window as `cost_usd`, so chips / score ring / cost
-  // all describe one "Review all" batch. The repo's PR list is small/capped, so
-  // the payload stays modest.
-  findings: z.array(Finding).nullish(),
+  findings_critical: z.number().int().nullish(),
+  findings_warning: z.number().int().nullish(),
+  findings_suggestion: z.number().int().nullish(),
+  // Total accumulated cost of all agent runs for this PR (null if no runs or cost unknown).
+  last_run_cost_usd: z.number().nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

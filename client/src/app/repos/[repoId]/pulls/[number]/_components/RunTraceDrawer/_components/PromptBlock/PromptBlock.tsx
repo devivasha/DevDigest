@@ -20,9 +20,9 @@ const miniBtnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-export function PromptBlock({ label, text, color, defaultOpen = false }: { label: string; text: string; color: string; defaultOpen?: boolean }) {
+export function PromptBlock({ label, text, color }: { label: string; text: string; color: string }) {
   const t = useTranslations("runs");
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [open, setOpen] = React.useState(false);
   const [full, setFull] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const copy = () => {

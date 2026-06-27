@@ -5,7 +5,7 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "../api";
-import { notify } from "../toast";
+import { notify } from "../contexts/toast";
 import type {
   FindingActionKind,
   PrReviewComment,
@@ -53,6 +53,7 @@ export function usePrReviews(prId: string | null | undefined) {
     queryKey: ["reviews", prId],
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
     enabled: !!prId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -61,12 +62,7 @@ export function useDeleteRun(prId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (runId: string) => api.del<{ ok: boolean }>(`/runs/${runId}`),
-    // Deleting a run also deletes the review it produced (server-side), so drop
-    // both the timeline and the Review Runs list from cache.
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pr-runs", prId] });
-      qc.invalidateQueries({ queryKey: ["reviews", prId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pr-runs", prId] }),
   });
 }
 

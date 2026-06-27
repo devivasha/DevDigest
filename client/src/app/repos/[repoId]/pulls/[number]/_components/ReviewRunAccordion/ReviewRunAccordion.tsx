@@ -7,7 +7,8 @@
 
 import React from "react";
 import { Icon, Badge } from "@devdigest/ui";
-import type { ReviewRecord, Verdict } from "@devdigest/shared";
+import { Severity, type ReviewRecord, type Verdict } from "@devdigest/shared";
+import { SeverityChip } from "@/components/SeverityChip/SeverityChip";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
@@ -31,7 +32,6 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
-  targetFindingId = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -42,12 +42,8 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
-  /** A finding to focus — if it belongs to this run, open so it can be scrolled
-   *  to + expanded by the FindingsPanel. */
-  targetFindingId?: string | null;
 }) {
-  const ownsTarget = !!targetFindingId && review.findings.some((f) => f.id === targetFindingId);
-  const [open, setOpen] = React.useState(defaultOpen || ownsTarget);
+  const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -56,13 +52,12 @@ export function ReviewRunAccordion({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRunId, targetNonce, review.run_id]);
-  // Opening from a finding deep-link (this run owns the target finding).
-  React.useEffect(() => {
-    if (ownsTarget) setOpen(true);
-  }, [ownsTarget]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
-  const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
+  const blockers = findings.filter((f) => f.severity === Severity.enum.CRITICAL && !f.dismissed_at).length;
+  const criticalCount = findings.filter((f) => f.severity === Severity.enum.CRITICAL).length;
+  const warningCount = findings.filter((f) => f.severity === Severity.enum.WARNING).length;
+  const suggestionCount = findings.filter((f) => f.severity === Severity.enum.SUGGESTION).length;
   const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
 
   return (
@@ -102,10 +97,16 @@ export function ReviewRunAccordion({
             {review.verdict.replace("_", " ")}
           </Badge>
         )}
-        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {findings.length} finding{findings.length === 1 ? "" : "s"}
-          {blockers > 0 ? ` · ${blockers} blocker${blockers === 1 ? "" : "s"}` : ""}
-        </span>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+          {criticalCount > 0 && <SeverityChip sev={Severity.enum.CRITICAL} count={criticalCount} />}
+          {warningCount > 0 && <SeverityChip sev={Severity.enum.WARNING} count={warningCount} />}
+          {suggestionCount > 0 && <SeverityChip sev={Severity.enum.SUGGESTION} count={suggestionCount} />}
+          {blockers > 0 && (
+            <span style={{ fontSize: 12, color: "var(--text-muted)", paddingBottom: 2 }}>
+              · {blockers} blocker{blockers !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
         <span style={{ flex: 1 }} />
         {review.score != null && (
           <Badge mono color="var(--text-secondary)">
@@ -161,7 +162,6 @@ export function ReviewRunAccordion({
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
-            targetFindingId={targetFindingId}
           />
         </div>
       )}

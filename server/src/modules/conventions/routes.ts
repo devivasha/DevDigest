@@ -1,88 +1,105 @@
-import type { FastifyInstance } from 'fastify';
-import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { z } from 'zod';
-import { getContext } from '../_shared/context.js';
-import { NotFoundError } from '../../platform/errors.js';
-import { ConventionsService } from './service.js';
+import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { z } from "zod";
+import { getContext } from "../_shared/context.js";
+import { NotFoundError, ValidationError } from "../../platform/errors.js";
+import { ConventionsService } from "./service.js";
 
 const RepoParams = z.object({ repoId: z.string().uuid() });
-const ConventionParams = z.object({ id: z.string().uuid() });
-const UpdateRuleBody = z.object({ rule: z.string().min(1) });
+const ConventionParams = z.object({
+  repoId: z.string().uuid(),
+  id: z.string().uuid(),
+});
 
-/**
- * Conventions module.
- *   GET  /repos/:repoId/conventions          → list all candidates for the repo
- *   POST /repos/:repoId/conventions/scan     → trigger LLM scan (sync)
- *   POST /conventions/:id/accept             → mark accepted=true
- *   POST /conventions/:id/reject             → mark accepted=false
- *   PATCH /conventions/:id/rule              → inline edit rule text
- *   GET  /repos/:repoId/conventions/skill    → return pre-rendered skill body
- */
+const PatchBody = z.object({
+  accepted: z.boolean().optional(),
+  rule: z.string().min(1).optional(),
+});
+
+const CreateSkillBody = z.object({
+  name: z.string().min(1),
+  description: z.string().default(""),
+});
+
 export default async function conventionsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
-  const service = new ConventionsService(app.container);
 
-  app.get(
-    '/repos/:repoId/conventions',
-    { schema: { params: RepoParams } },
-    async (req) => {
-      const { workspaceId } = await getContext(app.container, req);
-      return service.list(workspaceId, req.params.repoId);
-    },
-  );
-
-  // POST /repos/:repoId/conventions/scan must be before /repos/:repoId/conventions/:id
+  /** POST /repos/:repoId/conventions/extract — запустити екстракцію */
   app.post(
-    '/repos/:repoId/conventions/scan',
+    "/repos/:repoId/conventions/extract",
     { schema: { params: RepoParams } },
     async (req, reply) => {
       const { workspaceId } = await getContext(app.container, req);
-      const candidates = await service.scan(workspaceId, req.params.repoId);
+      const service = new ConventionsService(app.container);
+      const candidates = await service.extract(workspaceId, req.params.repoId);
       reply.status(201);
       return candidates;
     },
   );
 
+  /** GET /repos/:repoId/conventions — список конвенцій */
   app.get(
-    '/repos/:repoId/conventions/skill',
+    "/repos/:repoId/conventions",
     { schema: { params: RepoParams } },
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
-      const body = await service.buildSkillBodyForRepo(workspaceId, req.params.repoId);
-      return { body };
+      const service = new ConventionsService(app.container);
+      return service.list(workspaceId, req.params.repoId);
     },
   );
 
-  app.post(
-    '/conventions/:id/accept',
-    { schema: { params: ConventionParams } },
-    async (req) => {
-      const { workspaceId } = await getContext(app.container, req);
-      const result = await service.setAccepted(workspaceId, req.params.id, true);
-      if (!result) throw new NotFoundError('Convention not found');
-      return result;
-    },
-  );
-
-  app.post(
-    '/conventions/:id/reject',
-    { schema: { params: ConventionParams } },
-    async (req) => {
-      const { workspaceId } = await getContext(app.container, req);
-      const result = await service.setAccepted(workspaceId, req.params.id, false);
-      if (!result) throw new NotFoundError('Convention not found');
-      return result;
-    },
-  );
-
+  /**
+   * PATCH /repos/:repoId/conventions/:id
+   * { accepted: true }  → прийняти
+   * { accepted: false } → відхилити (видалити)
+   * { rule: "..." }     → оновити текст правила (inline edit)
+   */
   app.patch(
-    '/conventions/:id/rule',
-    { schema: { params: ConventionParams, body: UpdateRuleBody } },
+    "/repos/:repoId/conventions/:id",
+    { schema: { params: ConventionParams, body: PatchBody } },
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
-      const result = await service.updateRule(workspaceId, req.params.id, req.body.rule);
-      if (!result) throw new NotFoundError('Convention not found');
-      return result;
+      const service = new ConventionsService(app.container);
+      const { id } = req.params;
+      const { accepted, rule } = req.body;
+
+      if (rule !== undefined) {
+        const result = await service.updateRule(workspaceId, id, rule);
+        if (!result) throw new NotFoundError("Convention not found");
+        return result;
+      }
+
+      if (accepted === true) {
+        const result = await service.accept(workspaceId, id);
+        if (!result) throw new NotFoundError("Convention not found");
+        return result;
+      }
+
+      if (accepted === false) {
+        const ok = await service.reject(workspaceId, id);
+        if (!ok) throw new NotFoundError("Convention not found");
+        return { ok: true };
+      }
+
+      throw new ValidationError("Nothing to update: provide accepted or rule");
+    },
+  );
+
+  /** POST /repos/:repoId/conventions/skill — створити скіл з accepted */
+  app.post(
+    "/repos/:repoId/conventions/skill",
+    { schema: { params: RepoParams, body: CreateSkillBody } },
+    async (req, reply) => {
+      const { workspaceId } = await getContext(app.container, req);
+      const service = new ConventionsService(app.container);
+      const skill = await service.createSkillFromAccepted(
+        workspaceId,
+        req.params.repoId,
+        req.body.name,
+        req.body.description,
+      );
+      reply.status(201);
+      return skill;
     },
   );
 }

@@ -30,7 +30,6 @@ concurrency:
 
 jobs:
   integration:
-    name: tests (postgres)
     runs-on: ubuntu-latest
     defaults:
       run:

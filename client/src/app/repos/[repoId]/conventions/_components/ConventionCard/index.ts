@@ -1,1 +1,0 @@
-export { ConventionCard } from "./ConventionCard";

@@ -1,185 +1,137 @@
+/* VersionsTab — version history with diff expand and restore. */
 "use client";
+
 import React from "react";
-import { Button, Skeleton } from "@devdigest/ui";
-import { useSkillVersions, useRestoreSkillVersion, useSkill } from "../../../../../../../lib/hooks/skills";
+import { Button, Badge, Skeleton, ErrorState } from "@devdigest/ui";
+import { useSkillVersions, useRestoreSkill } from "@/lib/hooks/skills";
+import type { Skill } from "@devdigest/shared";
 
-function LineDiff({ oldText, newText }: { oldText: string; newText: string }) {
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
-  const maxLines = Math.max(oldLines.length, newLines.length);
-  const lines: { kind: "added" | "removed" | "context"; text: string }[] = [];
-  for (let i = 0; i < Math.min(maxLines, 60); i++) {
-    const o = oldLines[i] ?? "";
-    const n = newLines[i] ?? "";
-    if (o !== n) {
-      if (o) lines.push({ kind: "removed", text: o });
-      if (n) lines.push({ kind: "added", text: n });
-    } else {
-      lines.push({ kind: "context", text: o });
-    }
-  }
-  return (
-    <pre
-      style={{
-        fontSize: 11,
-        fontFamily: "var(--font-mono)",
-        overflow: "auto",
-        maxHeight: 400,
-        margin: 0,
-        lineHeight: 1.65,
-        padding: "10px 12px",
-        background: "var(--bg-muted)",
-        borderRadius: 4,
-        border: "1px solid var(--border)",
-      }}
-    >
-      {lines.map((l, i) => (
-        <div
-          key={i}
-          style={{
-            background:
-              l.kind === "added"
-                ? "rgba(0,200,100,0.10)"
-                : l.kind === "removed"
-                  ? "rgba(255,80,80,0.10)"
-                  : "transparent",
-            color:
-              l.kind === "added"
-                ? "var(--success-text, #34d399)"
-                : l.kind === "removed"
-                  ? "var(--error-text, #f87171)"
-                  : "var(--text-secondary)",
-            paddingLeft: 4,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-all",
-          }}
-        >
-          {l.kind === "added" ? "+ " : l.kind === "removed" ? "- " : "  "}
-          {l.text}
-        </div>
-      ))}
-    </pre>
-  );
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-function FullBody({ body }: { body: string }) {
-  return (
-    <pre
-      style={{
-        fontSize: 11,
-        fontFamily: "var(--font-mono)",
-        overflow: "auto",
-        maxHeight: 400,
-        margin: 0,
-        lineHeight: 1.65,
-        padding: "10px 12px",
-        background: "var(--bg-muted)",
-        borderRadius: 4,
-        border: "1px solid var(--border)",
-        color: "var(--text-secondary)",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-all",
-      }}
-    >
-      {body}
-    </pre>
-  );
-}
+export function VersionsTab({ skill }: { skill: Skill }) {
+  const {
+    data: versions,
+    isLoading,
+    isError,
+    refetch,
+  } = useSkillVersions(skill.id);
+  const restore = useRestoreSkill();
+  const [expanded, setExpanded] = React.useState<number | null>(null);
 
-export function VersionsTab({ skillId }: { skillId: string }) {
-  const { data: versions, isLoading } = useSkillVersions(skillId);
-  const { data: skill } = useSkill(skillId);
-  const restore = useRestoreSkillVersion();
-  const [diffOpen, setDiffOpen] = React.useState<number | null>(null);
-
-  if (isLoading) return <Skeleton height={200} />;
-  if (!versions || versions.length === 0) {
+  if (isLoading) {
     return (
-      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No version history yet.</p>
+      <div
+        style={{
+          padding: 28,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <Skeleton height={48} />
+        <Skeleton height={48} />
+      </div>
     );
   }
 
-  const currentVersion = skill?.version;
-  const count = versions.length;
+  if (isError || !versions) {
+    return (
+      <ErrorState body="Could not load versions." onRetry={() => refetch()} />
+    );
+  }
+
+  const sorted = [...versions].sort((a, b) => b.version - a.version);
+  const maxVersion = sorted[0]?.version ?? skill.version;
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Version history</h2>
-        <span
-          style={{
-            fontSize: 12,
-            background: "var(--bg-muted)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
-            padding: "2px 10px",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {count} {count === 1 ? "version" : "versions"}
-        </span>
+    <div style={{ padding: 28, maxWidth: 720 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
+        <h2 style={{ fontSize: 16, fontWeight: 700 }}>Version history</h2>
+        <Badge color="var(--text-secondary)">{sorted.length} versions</Badge>
       </div>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 20px" }}>
-        Every save snapshots the body so eval runs stay reproducible against the exact text they scored.
+      <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
+        Every save snapshots the body so eval runs stay reproducible against the
+        exact text they scored.
       </p>
 
-      {/* Version rows */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {versions.map((v, idx) => {
-          const prev = versions[idx + 1];
-          const isOpen = diffOpen === v.version;
-          const isCurrent = v.version === currentVersion;
-
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {sorted.map((v) => {
+          const isCurrent = v.version === maxVersion;
+          const isExpanded = expanded === v.version;
           return (
             <div
               key={v.version}
               style={{
-                borderRadius: 6,
                 border: "1px solid var(--border)",
+                borderRadius: 8,
                 overflow: "hidden",
               }}
             >
-              {/* Row */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "10px 16px",
-                  background: "var(--bg-surface)",
+                  gap: 12,
+                  padding: "12px 16px",
+                  background: "var(--bg-elevated)",
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: 13, minWidth: 24 }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 13,
+                    fontFamily: "monospace",
+                  }}
+                >
                   v{v.version}
                 </span>
-
-                {isCurrent && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--success, #34d399)" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--success, #34d399)", display: "inline-block" }} />
-                    Current
+                {isCurrent ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--ok)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ● Current
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {formatDate(v.created_at)}
                   </span>
                 )}
-
-                <span style={{ flex: 1, fontSize: 12, color: "var(--text-muted)" }}>
-                  {v.created_at ? new Date(v.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : ""}
-                </span>
-
+                <div style={{ flex: 1 }} />
                 <Button
-                  kind="secondary"
+                  kind="ghost"
                   size="sm"
-                  onClick={() => setDiffOpen(isOpen ? null : v.version)}
+                  onClick={() => setExpanded(isExpanded ? null : v.version)}
                 >
-                  {isOpen ? "Hide" : "Diff"}
+                  {isExpanded ? "Hide" : "Diff"}
                 </Button>
-
                 {!isCurrent && (
                   <Button
                     kind="secondary"
                     size="sm"
                     onClick={() => {
-                      if (window.confirm(`Restore v${v.version}? This creates a new version with the old body.`)) {
-                        restore.mutate({ id: skillId, version: v.version });
+                      if (
+                        window.confirm(
+                          `Restore to v${v.version}? Current body will be snapshotted first.`,
+                        )
+                      ) {
+                        restore.mutate({
+                          skillId: skill.id,
+                          version: v.version,
+                        });
                       }
                     }}
                     disabled={restore.isPending}
@@ -188,16 +140,23 @@ export function VersionsTab({ skillId }: { skillId: string }) {
                   </Button>
                 )}
               </div>
-
-              {/* Diff / body panel */}
-              {isOpen && (
-                <div style={{ padding: "0 16px 14px" }}>
-                  {prev ? (
-                    <LineDiff oldText={prev.body} newText={v.body} />
-                  ) : (
-                    <FullBody body={v.body} />
-                  )}
-                </div>
+              {isExpanded && (
+                <pre
+                  style={{
+                    margin: 0,
+                    padding: "12px 16px",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    background: "var(--bg-surface)",
+                    borderTop: "1px solid var(--border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {v.body}
+                </pre>
               )}
             </div>
           );

@@ -1,1 +1,0 @@
-export { ConventionsView } from "./ConventionsView";
