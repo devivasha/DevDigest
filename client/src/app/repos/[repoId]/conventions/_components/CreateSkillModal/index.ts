@@ -1,1 +1,0 @@
-export { CreateSkillModal } from "./CreateSkillModal";

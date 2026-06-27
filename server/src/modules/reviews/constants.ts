@@ -10,3 +10,6 @@
  * model's context.
  */
 export const REVIEW_STRATEGY = 'single-pass' as const;
+
+/** Max findings requested per review (task line). */
+export const MAX_FINDINGS_PER_REVIEW = 5;

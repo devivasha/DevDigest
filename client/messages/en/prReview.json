@@ -29,7 +29,10 @@
   "panel": {
     "hideLowConfidence": "Hide low confidence",
     "noMatchTitle": "No findings match",
-    "noMatchBody": "Adjust the filters above, or run a review to generate findings."
+    "noMatchBody": "Adjust the filters above, or run a review to generate findings.",
+    "severityCRITICAL": "Critical",
+    "severityWARNING": "Warning",
+    "severitySUGGESTION": "Suggestion"
   },
   "runReview": {
     "runAll": "Run all enabled agents",
@@ -106,10 +109,17 @@
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
-    "deleteRun": "Delete run",
-    "findingsInRun": "{count} findings in this run"
+    "deleteRun": "Delete run"
   },
-  "findingsPopover": {
-    "header": "{count} findings"
+  "overview": {
+    "descriptionLabel": "Description"
+  },
+  "intent": {
+    "sectionLabel": "Intent",
+    "recompute": "Recompute",
+    "recomputeAriaLabel": "Recompute PR intent",
+    "inScopeLabel": "In scope",
+    "outOfScopeLabel": "Out of scope",
+    "error": "Could not load intent. Click Recompute to try again."
   }
 }

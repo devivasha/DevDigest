@@ -1,14 +1,15 @@
-import type { FastifyPluginAsync } from 'fastify';
-import settings from './settings/routes.js';
-import repos from './repos/routes.js';
-import pulls from './pulls/routes.js';
-import polling from './polling/routes.js';
-import workspace from './workspace/routes.js';
-import agents from './agents/routes.js';
-import reviews from './reviews/routes.js';
-import repoIntel from './repo-intel/routes.js';
-import skills from './skills/routes.js';
-import conventions from './conventions/routes.js';
+import type { FastifyPluginAsync } from "fastify";
+import settings from "./settings/routes.js";
+import repos from "./repos/routes.js";
+import pulls from "./pulls/routes.js";
+import polling from "./polling/routes.js";
+import workspace from "./workspace/routes.js";
+import agents from "./agents/routes.js";
+import reviews from "./reviews/routes.js";
+import repoIntel from "./repo-intel/routes.js";
+import skills from "./skills/routes.js";
+import conventions from "./conventions/routes.js";
+import intent from "./intent/routes.js";
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -34,4 +35,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
   repoIntel,
   skills,
   conventions,
+  intent,
 };

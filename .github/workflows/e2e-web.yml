@@ -37,7 +37,6 @@ env:
 
 jobs:
   e2e:
-    name: browser flows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

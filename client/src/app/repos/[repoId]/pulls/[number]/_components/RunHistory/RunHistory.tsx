@@ -3,11 +3,8 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
-import { RunCostBadge } from "@/components/RunCostBadge";
-import { FindingsCountChips, countBySeverity, totalCount } from "@/components/FindingsCountChips";
-import { FindingsHoverCard } from "@/components/FindingsHoverCard";
-import { FindingPreview } from "@/components/FindingPreview";
+import { Severity, type RunSummary, type PrCommit } from "@devdigest/shared";
+import { SeverityChip } from "@/components/SeverityChip/SeverityChip";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -91,26 +88,12 @@ function tsOf(s: string | null | undefined): number {
 export function RunHistory({
   runs,
   commits = [],
-  findingsByRunId,
-  repoFullName,
-  headSha,
-  prNumber,
-  onSelectFinding,
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
-  /** Per-run findings (keyed by run_id) for the count chips + hover popover. */
-  findingsByRunId?: Map<string, FindingRecord[]>;
-  /** owner/repo + head sha — deep-link a finding's file:line to GitHub. */
-  repoFullName?: string | null;
-  headSha?: string | null;
-  /** PR number — lets a finding's file link open the PR's Files changed tab. */
-  prNumber?: number;
-  /** Select a finding in a run's popover → focus it in the review below. */
-  onSelectFinding?: (findingId: string) => void;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -166,6 +149,7 @@ export function RunHistory({
 
         const r = item.run;
         const o = outcomeOf(r);
+        const tok = (r.tokens_in ?? 0) + (r.tokens_out ?? 0);
         const settled = r.status === "done";
         return (
           <div key={`run:${r.run_id}`} style={rowStyle}>
@@ -206,73 +190,25 @@ export function RunHistory({
                   {r.error}
                 </div>
               )}
-              {settled &&
-                (() => {
-                  const runFindings = findingsByRunId?.get(r.run_id) ?? [];
-                  const counts = countBySeverity(runFindings);
-                  const total = totalCount(counts);
-                  const blockers = r.blockers ?? 0;
-                  const blockerSuffix =
-                    blockers > 0 ? (
-                      <span style={{ color: "var(--text-muted)" }}>
-                        {t("runStatus.blockers", { count: blockers })}
-                      </span>
-                    ) : null;
-
-                  // Have the actual findings → chips + hover popover.
-                  if (total > 0) {
-                    return (
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-                        <FindingsHoverCard
-                          align="left"
-                          anchor={<FindingsCountChips counts={counts} size={13} />}
-                          header={t("timeline.findingsInRun", { count: total })}
-                        >
-                          {runFindings.map((f) => (
-                            <FindingPreview
-                              key={f.id}
-                              f={f}
-                              repoFullName={repoFullName}
-                              headSha={headSha}
-                              prNumber={prNumber}
-                              onSelect={onSelectFinding}
-                            />
-                          ))}
-                        </FindingsHoverCard>
-                        {blockerSuffix}
-                      </div>
-                    );
-                  }
-
-                  // Findings not loaded but the run row says there were some →
-                  // neutral count, no popover (e.g. a summary-kind run).
-                  if ((r.findings_count ?? 0) > 0) {
-                    return (
-                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                        {blockers > 0 ? t("runStatus.blockers", { count: blockers }) : ""}
-                      </div>
-                    );
-                  }
-
-                  // Settled with zero findings.
-                  return (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {t("runStatus.findings", { count: 0 })}
-                    </div>
-                  );
-                })()}
+              {settled && (
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+                  {(r.findings_critical ?? 0) > 0 && (
+                    <SeverityChip sev={Severity.enum.CRITICAL} count={r.findings_critical!} />
+                  )}
+                  {(r.findings_warning ?? 0) > 0 && (
+                    <SeverityChip sev={Severity.enum.WARNING} count={r.findings_warning!} />
+                  )}
+                  {(r.findings_suggestion ?? 0) > 0 && (
+                    <SeverityChip sev={Severity.enum.SUGGESTION} count={r.findings_suggestion!} />
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
               {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
-              {settled && (
-                <span style={{ fontSize: 11 }}>
-                  <RunCostBadge
-                    variant="withTokens"
-                    tokensIn={r.tokens_in}
-                    tokensOut={r.tokens_out}
-                    cost={r.cost_usd}
-                  />
+              {tok > 0 && (
+                <span className="mono">
+                  {tok} tok{r.cost_usd != null ? ` · $${r.cost_usd.toFixed(3)}` : ""}
                 </span>
               )}
             </div>

@@ -1,6 +1,5 @@
-import type { Agent, AgentVersion, CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
-import { AgentVersionConfig } from '@devdigest/shared';
-import type { AgentRow, AgentVersionRow } from './repository.js';
+import type { Agent, CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
+import type { AgentRow } from './repository.js';
 
 /**
  * Pure helpers for the agents module — DB row ⇄ DTO mapping and the
@@ -23,21 +22,6 @@ export function toAgentDto(row: AgentRow): Agent {
     strategy: row.strategy as ReviewStrategy,
     ci_fail_on: row.ciFailOn as CiFailOn,
     repo_intel: row.repoIntel,
-  };
-}
-
-/**
- * Map a persisted `agent_versions` row to the public `AgentVersion` DTO. The
- * stored `config_json` is untyped jsonb (a snapshot from an older config shape
- * could drift), so it is parsed through `AgentVersionConfig` — a malformed
- * snapshot throws here rather than leaking an unvalidated blob to the client.
- */
-export function toAgentVersionDto(row: AgentVersionRow): AgentVersion {
-  return {
-    agent_id: row.agentId,
-    version: row.version,
-    config: AgentVersionConfig.parse(row.configJson),
-    created_at: row.createdAt.toISOString(),
   };
 }
 

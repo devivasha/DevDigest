@@ -1,5 +1,5 @@
 {
-  "id": "738dfce6-6324-4391-b2f4-41331e0847aa",
+  "id": "796e63cf-521b-45a0-8385-cc394e9262d0",
   "prevId": "43296349-3fa6-4ef6-90ad-549092e4526c",
   "version": "7",
   "dialect": "postgresql",
@@ -1490,6 +1490,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -2597,6 +2604,12 @@
         "tokens_out": {
           "name": "tokens_out",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost_usd": {
+          "name": "cost_usd",
+          "type": "double precision",
           "primaryKey": false,
           "notNull": false
         },

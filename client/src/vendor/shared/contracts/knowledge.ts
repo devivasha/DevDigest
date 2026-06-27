@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Conformance, Onboarding, Eval, Memory, Conventions, Skills,
@@ -6,7 +6,11 @@ import { z } from 'zod';
  */
 
 // ---- Conformance ----
-export const ConformanceStatus = z.enum(['implemented', 'missing', 'out_of_scope']);
+export const ConformanceStatus = z.enum([
+  "implemented",
+  "missing",
+  "out_of_scope",
+]);
 export type ConformanceStatus = z.infer<typeof ConformanceStatus>;
 
 export const ConformanceItem = z.object({
@@ -67,7 +71,7 @@ export const EvalRun = z.object({
 });
 export type EvalRun = z.infer<typeof EvalRun>;
 
-export const EvalOwnerKind = z.enum(['skill', 'agent']);
+export const EvalOwnerKind = z.enum(["skill", "agent"]);
 export type EvalOwnerKind = z.infer<typeof EvalOwnerKind>;
 
 export const EvalCase = z.object({
@@ -84,15 +88,15 @@ export const EvalCase = z.object({
 export type EvalCase = z.infer<typeof EvalCase>;
 
 // ---- Memory ----
-export const MemoryScope = z.enum(['repo', 'global', 'team']);
+export const MemoryScope = z.enum(["repo", "global", "team"]);
 export type MemoryScope = z.infer<typeof MemoryScope>;
 
 export const MemoryKind = z.enum([
-  'decision',
-  'convention',
-  'preference',
-  'fact',
-  'learning',
+  "decision",
+  "convention",
+  "preference",
+  "fact",
+  "learning",
 ]);
 export type MemoryKind = z.infer<typeof MemoryKind>;
 
@@ -112,11 +116,24 @@ export const MemoryItem = z.object({
 export type MemoryItem = z.infer<typeof MemoryItem>;
 
 // ---- Skills ----
-export const SkillType = z.enum(['rubric', 'convention', 'security', 'custom']);
+export const SkillType = z.enum(["rubric", "convention", "security", "custom"]);
 export type SkillType = z.infer<typeof SkillType>;
 
-export const SkillSource = z.enum(['manual', 'imported_url', 'extracted', 'community']);
+export const SkillSource = z.enum([
+  "manual",
+  "imported_url",
+  "extracted",
+  "community",
+]);
 export type SkillSource = z.infer<typeof SkillSource>;
+
+export const SkillThreatLevel = z.enum([
+  "unknown",
+  "safe",
+  "suspicious",
+  "dangerous",
+]);
+export type SkillThreatLevel = z.infer<typeof SkillThreatLevel>;
 
 export const Skill = z.object({
   id: z.string(),
@@ -128,6 +145,7 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  threat_level: SkillThreatLevel.optional(),
 });
 export type Skill = z.infer<typeof Skill>;
 
@@ -140,38 +158,9 @@ export const CommunitySkill = z.object({
 });
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
-export const SkillVersion = z.object({
-  skill_id: z.string(),
-  version: z.number().int(),
-  body: z.string(),
-  message: z.string().nullable().optional(),
-  created_at: z.string(),
-});
-export type SkillVersion = z.infer<typeof SkillVersion>;
-
-export const SkillStats = z.object({
-  used_by_count: z.number().int(),
-  agents: z.array(z.object({ id: z.string(), name: z.string() })),
-  version_count: z.number().int(),
-  findings_by_category: z.record(z.string(), z.number()),
-  findings_last_30d: z.number().int(),
-});
-export type SkillStats = z.infer<typeof SkillStats>;
-
-export const SkillImportPreview = z.object({
-  name: z.string(),
-  description: z.string(),
-  type: SkillType,
-  source: SkillSource,
-  body: z.string(),
-  ignored_files: z.array(z.string()),
-});
-export type SkillImportPreview = z.infer<typeof SkillImportPreview>;
-
 // ---- Conventions ----
 export const ConventionCandidate = z.object({
   id: z.string(),
-  category: z.string(),
   rule: z.string(),
   evidence_path: z.string(),
   evidence_snippet: z.string(),
@@ -181,19 +170,19 @@ export const ConventionCandidate = z.object({
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
 
 // ---- Agents ----
-export const Provider = z.enum(['openai', 'anthropic', 'openrouter']);
+export const Provider = z.enum(["openai", "anthropic", "openrouter"]);
 export type Provider = z.infer<typeof Provider>;
 
 // Review execution strategy (matches @devdigest/reviewer-core's ReviewStrategy):
 //  - single-pass: send the WHOLE diff in ONE model call (default)
 //  - map-reduce:  one model call PER changed file (for very large diffs)
 //  - auto:        single-pass, switching to map-reduce when the diff is large
-export const ReviewStrategy = z.enum(['single-pass', 'map-reduce', 'auto']);
+export const ReviewStrategy = z.enum(["single-pass", "map-reduce", "auto"]);
 export type ReviewStrategy = z.infer<typeof ReviewStrategy>;
 
 // CI gate policy — when a CI review should BLOCK (REQUEST_CHANGES + fail the
 // check) vs just comment. Deterministic from severities; acted on ONLY in CI.
-export const CiFailOn = z.enum(['never', 'critical', 'warning', 'any']);
+export const CiFailOn = z.enum(["never", "critical", "warning", "any"]);
 export type CiFailOn = z.infer<typeof CiFailOn>;
 
 export const Agent = z.object({
@@ -206,11 +195,12 @@ export const Agent = z.object({
   output_schema: z.unknown().nullish(),
   enabled: z.boolean(),
   version: z.number().int(),
-  strategy: ReviewStrategy.default('single-pass'),
-  ci_fail_on: CiFailOn.default('critical'),
+  strategy: ReviewStrategy.default("single-pass"),
+  ci_fail_on: CiFailOn.default("critical"),
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  skill_count: z.number().int().optional(),
 });
 export type Agent = z.infer<typeof Agent>;
 
