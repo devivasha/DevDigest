@@ -102,18 +102,19 @@ export function FindingsPanel({
           />
         ) : (
           shown.map((f, i) => (
-            <FindingCard
-              key={f.id}
-              f={f}
-              focused={i === focusIdx}
-              defaultExpanded={i === 0}
-              pending={action.isPending}
-              repoFullName={repoFullName}
-              headSha={headSha}
-              onAction={(act) =>
-                action.mutate({ findingId: f.id, action: act, prId })
-              }
-            />
+            <div key={f.id} data-finding-id={f.id}>
+              <FindingCard
+                f={f}
+                focused={i === focusIdx}
+                defaultExpanded={i === 0}
+                pending={action.isPending}
+                repoFullName={repoFullName}
+                headSha={headSha}
+                onAction={(act) =>
+                  action.mutate({ findingId: f.id, action: act, prId })
+                }
+              />
+            </div>
           ))
         )}
       </div>

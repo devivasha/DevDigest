@@ -1,0 +1,34 @@
+{
+  "name": "devdigest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered PR review digest — automated code review with LLM agents",
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "dev:api": "cd server && pnpm dev",
+    "dev:web": "cd client && pnpm dev",
+    "build:api": "cd server && pnpm build",
+    "build:web": "cd client && pnpm build",
+    "typecheck": "cd server && pnpm typecheck && cd ../client && pnpm typecheck && cd ../reviewer-core && npm run typecheck",
+    "test": "cd server && pnpm exec vitest run --exclude '**/*.it.test.ts' && cd ../client && pnpm test && cd ../reviewer-core && npm test",
+    "test:integration": "cd server && pnpm exec vitest run .it.test",
+    "test:e2e": "./scripts/e2e.sh",
+    "db:migrate": "cd server && pnpm db:migrate",
+    "db:seed": "cd server && pnpm db:seed",
+    "db:generate": "cd server && pnpm db:generate",
+    "verify:l03": "node scripts/verify-l03.mjs"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "keywords": [
+    "code-review",
+    "llm",
+    "github",
+    "pull-requests",
+    "fastify",
+    "nextjs"
+  ],
+  "license": "UNLICENSED"
+}
