@@ -32,6 +32,7 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
+  targetFindingId = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -42,6 +43,9 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
+  /** When this matches a finding in this review, opens the accordion and scrolls
+   *  the FindingCard into view (driven from Smart Diff badge click). */
+  targetFindingId?: string | null;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -52,6 +56,22 @@ export function ReviewRunAccordion({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRunId, targetNonce, review.run_id]);
+
+  // Smart Diff finding click: open this accordion if it owns the target finding,
+  // then scroll the FindingCard element into view once the body renders.
+  React.useEffect(() => {
+    if (!targetFindingId) return;
+    const owns = review.findings.some((f) => f.id === targetFindingId);
+    if (!owns) return;
+    setOpen(true);
+    // Allow the body to mount before querying the DOM.
+    setTimeout(() => {
+      rootRef.current
+        ?.querySelector(`[data-finding-id="${targetFindingId}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetFindingId]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === Severity.enum.CRITICAL && !f.dismissed_at).length;

@@ -3,7 +3,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
-import type { PrMeta, PrDetail } from "../types";
+import type { PrMeta, PrDetail, SmartDiff } from "../types";
 
 export function usePulls(repoId: string | null | undefined) {
   return useQuery({
@@ -22,5 +22,14 @@ export function usePullDetail(prId: string | number | null | undefined) {
     queryKey: ["pull", prId],
     queryFn: () => api.get<PrDetail>(`/pulls/${prId}`),
     enabled: prId != null,
+  });
+}
+
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["smart-diff", prId],
+    queryFn: () => api.get<SmartDiff>(`/pulls/${prId}/smart-diff`),
+    enabled: !!prId,
+    staleTime: 60_000,
   });
 }

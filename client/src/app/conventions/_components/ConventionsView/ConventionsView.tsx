@@ -6,6 +6,7 @@ import { Button, EmptyState, Skeleton, ErrorState } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import { useActiveRepo } from "@/lib/contexts/repoContext";
 import { useConventions, useExtractConventions } from "@/lib/hooks/conventions";
+import { useSkills } from "@/lib/hooks/skills";
 import { ConventionCard } from "../ConventionCard/ConventionCard";
 import { CreateSkillFromConventionsModal } from "../CreateSkillFromConventionsModal/CreateSkillFromConventionsModal";
 
@@ -19,9 +20,13 @@ export function ConventionsView() {
     refetch,
   } = useConventions(repoId);
   const extract = useExtractConventions();
+  const { data: skills = [] } = useSkills();
   const [showModal, setShowModal] = React.useState(false);
 
   const accepted = conventions.filter((c) => c.accepted);
+  // Skills that already encode conventions — shown as suggestions on each card
+  // so users can spot overlaps before accepting a new one.
+  const conventionSkills = skills.filter((s) => s.type === "convention");
   const total = conventions.length;
   const extractError =
     extract.error instanceof Error ? extract.error.message : null;
@@ -153,6 +158,7 @@ export function ConventionsView() {
                     ? `https://github.com/${activeRepo.full_name}`
                     : undefined
                 }
+                suggestedSkills={conventionSkills}
               />
             ))}
           </div>
