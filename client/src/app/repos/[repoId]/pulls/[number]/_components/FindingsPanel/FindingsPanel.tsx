@@ -17,11 +17,13 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  targetFindingId,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  targetFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
@@ -106,7 +108,7 @@ export function FindingsPanel({
               <FindingCard
                 f={f}
                 focused={i === focusIdx}
-                defaultExpanded={i === 0}
+                defaultExpanded={targetFindingId ? f.id === targetFindingId : i === 0}
                 pending={action.isPending}
                 repoFullName={repoFullName}
                 headSha={headSha}
