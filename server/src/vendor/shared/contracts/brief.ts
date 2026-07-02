@@ -120,3 +120,61 @@ export const PrBrief = z.object({
   history: PrHistory,
 });
 export type PrBrief = z.infer<typeof PrBrief>;
+
+// ---- Blast Radius HTTP response (GET /pulls/:id/blast) ----
+// Note: two parallel type families exist intentionally:
+//   repo-intel/types.ts: BlastResult, BlastChangedSymbol, BlastCallerRow — INTERNAL, server only
+//   brief.ts (below):    BlastRadiusResult + prefixed types — HTTP CONTRACT, client + MCP
+// BlastService maps internal → contract before returning.
+export const BlastDegradedReason = z.enum([
+  'flag_off',
+  'index_failed',
+  'index_partial',
+  'repo_too_large',
+  'no_data',
+]);
+export type BlastDegradedReason = z.infer<typeof BlastDegradedReason>;
+
+export const BlastChangedSymbol = z.object({
+  file: z.string(),
+  name: z.string(),
+  kind: z.string(),
+});
+export type BlastChangedSymbol = z.infer<typeof BlastChangedSymbol>;
+
+export const BlastCallerRow = z.object({
+  file: z.string(),
+  symbol: z.string(),
+  viaSymbol: z.string(),
+  line: z.number().int(),
+  rank: z.number().int(),
+});
+export type BlastCallerRow = z.infer<typeof BlastCallerRow>;
+
+export const PriorPr = z.object({
+  id: z.string(),
+  number: z.number(),
+  title: z.string(),
+  openedAt: z.string().nullable(),
+  status: z.string(),
+});
+export type PriorPr = z.infer<typeof PriorPr>;
+
+export const BlastRadiusResult = z.object({
+  changedSymbols: z.array(BlastChangedSymbol),
+  callers: z.array(BlastCallerRow),
+  impactedEndpoints: z.array(z.string()),
+  factsByFile: z
+    .record(
+      z.object({
+        endpoints: z.array(z.string()),
+        crons: z.array(z.string()),
+      }),
+    )
+    .optional(),
+  degraded: z.boolean().optional(),
+  reason: BlastDegradedReason.optional(),
+  priorPrs: z.array(PriorPr).optional(),
+  summary: z.string().optional(),
+});
+export type BlastRadiusResult = z.infer<typeof BlastRadiusResult>;

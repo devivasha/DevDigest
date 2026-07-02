@@ -4,7 +4,7 @@ import { z } from "zod";
 import { SkillSource, SkillType } from "@devdigest/shared";
 import { getContext } from "../_shared/context.js";
 import { IdParams } from "../_shared/schemas.js";
-import { AppError, NotFoundError } from "../../platform/errors.js";
+import { NotFoundError } from "../../platform/errors.js";
 import { SkillsService } from "./service.js";
 import { regexScan, llmScan, THREAT_LEVEL } from "./scanner.js";
 import type { ThreatLevel } from "./scanner.js";
@@ -58,33 +58,6 @@ const ImportUrlBody = z.object({
   description: z.string().optional(),
 });
 
-const PRIVATE_IP_RE =
-  /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.0\.0\.0$|::1$|\[::1\]$)/i;
-
-function validateImportUrl(raw: string): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    throw new AppError("invalid_url", "Invalid URL", 400);
-  }
-  if (parsed.protocol !== "https:") {
-    throw new AppError(
-      "invalid_url",
-      "Only HTTPS URLs are allowed for skill import",
-      400,
-    );
-  }
-  const host = parsed.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".localhost") || PRIVATE_IP_RE.test(host)) {
-    throw new AppError(
-      "ssrf_blocked",
-      "Private or local addresses are not allowed",
-      403,
-    );
-  }
-}
-
 export default async function skillsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const service = new SkillsService(app.container);
@@ -106,7 +79,6 @@ export default async function skillsRoutes(appBase: FastifyInstance) {
     "/skills/import-url",
     { schema: { body: ImportUrlBody } },
     async (req, reply) => {
-      validateImportUrl(req.body.url);
       const { workspaceId } = await getContext(app.container, req);
       const body = await app.container.webFetch.fetch(req.body.url);
 

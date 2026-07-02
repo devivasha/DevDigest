@@ -17,13 +17,11 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
-  targetFindingId,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
-  targetFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
@@ -104,19 +102,18 @@ export function FindingsPanel({
           />
         ) : (
           shown.map((f, i) => (
-            <div key={f.id} data-finding-id={f.id}>
-              <FindingCard
-                f={f}
-                focused={i === focusIdx}
-                defaultExpanded={targetFindingId ? f.id === targetFindingId : i === 0}
-                pending={action.isPending}
-                repoFullName={repoFullName}
-                headSha={headSha}
-                onAction={(act) =>
-                  action.mutate({ findingId: f.id, action: act, prId })
-                }
-              />
-            </div>
+            <FindingCard
+              key={f.id}
+              f={f}
+              focused={i === focusIdx}
+              defaultExpanded={i === 0}
+              pending={action.isPending}
+              repoFullName={repoFullName}
+              headSha={headSha}
+              onAction={(act) =>
+                action.mutate({ findingId: f.id, action: act, prId })
+              }
+            />
           ))
         )}
       </div>

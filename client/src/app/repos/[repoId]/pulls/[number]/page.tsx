@@ -67,17 +67,6 @@ export default function PRDetailPage() {
   };
   const setTab = (t: string) => setParam("tab", t);
 
-  // Finding click from Smart Diff: switch to Agent runs tab and scroll to the finding.
-  const [targetFindingId, setTargetFindingId] = React.useState<string | null>(null);
-  const handleFindingClick = React.useCallback(
-    (findingId: string) => {
-      setTargetFindingId(findingId);
-      setTab("findings");
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
   const allFindings: FindingRecord[] = React.useMemo(
@@ -159,7 +148,6 @@ export default function PRDetailPage() {
             repoFullName={repoFullName}
             headSha={pr.head_sha}
             cancelMutation={cancel}
-            targetFindingId={targetFindingId}
             onOpenTrace={(id) => setParam("trace", id)}
             onDelete={(id) => {
               if (window.confirm("Delete this run from history? (its logs are removed too)"))
@@ -179,8 +167,6 @@ export default function PRDetailPage() {
             filesCount={pr.files_count}
             files={pr.files}
             canComment={pr.status === "open"}
-            reviews={reviews}
-            onFindingClick={handleFindingClick}
           />
         )}
       </div>

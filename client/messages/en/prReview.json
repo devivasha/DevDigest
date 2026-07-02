@@ -1,4 +1,27 @@
 {
+  "blastRadius": {
+    "title": "Blast Radius",
+    "symbols": "{count} symbols",
+    "callers": "{count} callers",
+    "endpoints": "{count} endpoints",
+    "crons": "{count} crons",
+    "tree": "Tree",
+    "graph": "Graph",
+    "degraded": "Degraded",
+    "emptyTitle": "No blast radius data",
+    "emptyBody": "Run at least one review agent to compute impact.",
+    "priorPrs": "Prior PRs touching these files",
+    "callerAt": "line {line}",
+    "loadingTitle": "Computing blast radius…",
+    "callersCount": "{count} callers",
+    "changedSymbol": "Changed symbol",
+    "caller": "Caller",
+    "endpoint": "Endpoint",
+    "openGraph": "Graph",
+    "graphTitle": "Blast Radius Graph",
+    "closeGraph": "Close graph",
+    "error": "Failed to load blast radius"
+  },
   "finding": {
     "accepted": "accepted",
     "dismissed": "dismissed",

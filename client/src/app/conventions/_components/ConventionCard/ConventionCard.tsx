@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { ConventionCandidate, Skill } from "@devdigest/shared";
+import type { ConventionCandidate } from "@devdigest/shared";
 import {
   useAcceptConvention,
   useRejectConvention,
@@ -12,7 +12,6 @@ interface Props {
   convention: ConventionCandidate;
   repoId: string;
   repoUrl?: string;
-  suggestedSkills?: Skill[];
 }
 
 function confidenceColor(v: number): string {
@@ -21,7 +20,7 @@ function confidenceColor(v: number): string {
   return "var(--text-muted)";
 }
 
-export function ConventionCard({ convention: c, repoId, repoUrl, suggestedSkills }: Props) {
+export function ConventionCard({ convention: c, repoId, repoUrl }: Props) {
   const accept = useAcceptConvention();
   const reject = useRejectConvention();
   const updateRule = useUpdateConventionRule();
@@ -203,34 +202,6 @@ export function ConventionCard({ convention: c, repoId, repoUrl, suggestedSkills
           </div>
           <span>{Math.round(c.confidence * 100)}%</span>
         </div>
-
-        {/* Suggested skills — convention skills already captured from prior scans */}
-        {suggestedSkills && suggestedSkills.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Suggested skills
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {suggestedSkills.map((skill) => (
-                <span
-                  key={skill.id}
-                  title={skill.description}
-                  style={{
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    border: "1px solid var(--accent)",
-                    color: "var(--accent)",
-                    background: "rgba(99,102,241,0.08)",
-                    cursor: "default",
-                  }}
-                >
-                  {skill.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Right: actions */}

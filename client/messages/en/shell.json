@@ -41,21 +41,5 @@
     "viewOnGitHub": "View on GitHub",
     "postedToGitHub": "Posts to GitHub immediately",
     "outdatedTitle": "{count} comment(s) on older revisions"
-  },
-  "smartDiff": {
-    "smartOrder": "Smart order",
-    "originalOrder": "Original order",
-    "whatThisDoes": "What this does:",
-    "goToFinding": "Go to finding in Agent runs",
-    "role": {
-      "core": "Core logic",
-      "wiring": "Wiring",
-      "boilerplate": "Boilerplate"
-    },
-    "roleDesc": {
-      "core": "The substance of the change — review closely",
-      "wiring": "Hooks the core into the app",
-      "boilerplate": "Generated / mechanical — skim"
-    }
   }
 }

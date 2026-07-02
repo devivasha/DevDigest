@@ -1,14 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { PrMeta, PrDetail, GitHubClient, PrReviewComment, SmartDiff, SmartDiffFile, SmartDiffRole } from '@devdigest/shared';
+import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus, rollupSeverities, type SeverityCounts } from './status.js';
-import { classifyFile, deriveFileSummary, LARGE_PR_THRESHOLD } from './smart-diff-classifier.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -356,95 +355,6 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         const msg = err instanceof Error ? err.message : 'Failed to post the comment to GitHub.';
         throw new AppError('github_comment_failed', msg, 400, { cause: String(err) });
       }
-    },
-  );
-
-  // ---- Smart Diff (F3 extension) -------------------------------------------
-  // Classifies each changed file into core / wiring / boilerplate using pure
-  // path-pattern matching (zero LLM calls), then layers in finding_lines from
-  // the latest persisted review so the client can render severity indicators.
-  app.get(
-    '/pulls/:id/smart-diff',
-    { schema: { params: IdParams } },
-    async (req): Promise<SmartDiff> => {
-      const { workspaceId } = await getContext(container, req);
-      const [pr] = await container.db
-        .select()
-        .from(t.pullRequests)
-        .where(and(eq(t.pullRequests.workspaceId, workspaceId), eq(t.pullRequests.id, req.params.id)));
-      if (!pr) throw new NotFoundError('Pull request not found');
-
-      const rawFiles = await container.db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr.id));
-      // Deduplicate by path — seed data or a race between two concurrent
-      // GET /pulls/:id refreshes can leave duplicate rows for the same file.
-      const seenPaths = new Set<string>();
-      const files = rawFiles.filter((f) => {
-        if (seenPaths.has(f.path)) return false;
-        seenPaths.add(f.path);
-        return true;
-      });
-
-      const [latestReview] = await container.db
-        .select({ id: t.reviews.id })
-        .from(t.reviews)
-        .where(and(eq(t.reviews.prId, pr.id), eq(t.reviews.kind, 'review')))
-        .orderBy(desc(t.reviews.createdAt))
-        .limit(1);
-
-      const findings = latestReview
-        ? await container.db.select().from(t.findings).where(eq(t.findings.reviewId, latestReview.id))
-        : [];
-
-      // Map file path → sorted start-line numbers from the latest review.
-      const findingLinesByFile = new Map<string, number[]>();
-      for (const f of findings) {
-        const list = findingLinesByFile.get(f.file) ?? [];
-        list.push(f.startLine);
-        findingLinesByFile.set(f.file, list);
-      }
-
-      const buckets = new Map<SmartDiffRole, SmartDiffFile[]>([
-        ['core', []],
-        ['wiring', []],
-        ['boilerplate', []],
-      ]);
-      let totalLines = 0;
-      for (const f of files) {
-        const role = classifyFile(f.path);
-        const lines = (findingLinesByFile.get(f.path) ?? []).sort((a, b) => a - b);
-        buckets.get(role)!.push({
-          path: f.path,
-          additions: f.additions,
-          deletions: f.deletions,
-          finding_lines: lines,
-          pseudocode_summary: deriveFileSummary(f.patch),
-        });
-        totalLines += f.additions + f.deletions;
-      }
-
-      const boilerplatePaths = (buckets.get('boilerplate') ?? []).map((f) => f.path);
-      const corePaths = [
-        ...(buckets.get('core') ?? []),
-        ...(buckets.get('wiring') ?? []),
-      ].map((f) => f.path);
-      const proposed_splits =
-        totalLines > LARGE_PR_THRESHOLD && boilerplatePaths.length > 0
-          ? [
-              { name: 'Logic changes', files: corePaths },
-              { name: 'Lockfile / generated', files: boilerplatePaths },
-            ]
-          : [];
-
-      return {
-        groups: (['core', 'wiring', 'boilerplate'] as SmartDiffRole[])
-          .map((role) => ({ role, files: buckets.get(role)! }))
-          .filter((g) => g.files.length > 0),
-        split_suggestion: {
-          too_big: totalLines > LARGE_PR_THRESHOLD,
-          total_lines: totalLines,
-          proposed_splits,
-        },
-      };
     },
   );
 }
