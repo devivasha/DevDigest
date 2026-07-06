@@ -169,7 +169,7 @@ describe('BlastService.getBlast', () => {
     expect(unusedRow.endpoints_affected).toEqual([]);
     expect(unusedRow.crons_affected).toEqual([]);
 
-    // Top-level unions: endpoints always from the flat field (deduped); crons from factsByFile union.
+    // Top-level unions: endpoints + crons unioned from the (non-test) caller files' facts, deduped.
     expect(result.impacted_endpoints).toEqual(['GET /api/public']);
     expect(result.impacted_crons).toEqual(['nightly-sync']);
 
@@ -181,6 +181,45 @@ describe('BlastService.getBlast', () => {
     );
 
     // Zero-LLM guarantee.
+    expect(llm.calls).toHaveLength(0);
+  });
+
+  it('excludes test-file callers (and their endpoints/crons) from downstream and top-level unions', async () => {
+    const blast: BlastResult = {
+      changedSymbols: [{ file: 'src/db/seed.ts', name: 'seed', kind: 'function' }],
+      callers: [
+        { file: 'src/api/bootstrap.ts', symbol: 'bootstrap', viaSymbol: 'seed', line: 5, rank: 3 },
+        { file: 'server/test/reviews.it.test.ts', symbol: 'setup', viaSymbol: 'seed', line: 105, rank: 2 },
+        { file: 'src/api/__tests__/seed.spec.ts', symbol: 'spec', viaSymbol: 'seed', line: 3, rank: 1 },
+      ],
+      impactedEndpoints: ['GET /prod', 'POST /test-only', 'GET /also-test'],
+      factsByFile: {
+        'src/api/bootstrap.ts': { endpoints: ['GET /prod'], crons: ['nightly'] },
+        'server/test/reviews.it.test.ts': { endpoints: ['POST /test-only'], crons: ['test-cron'] },
+        'src/api/__tests__/seed.spec.ts': { endpoints: ['GET /also-test'], crons: [] },
+      },
+      degraded: false,
+    };
+
+    const llm = new MockLLMProvider();
+    const db = makeDb([]);
+    const repoIntel = makeRepoIntel(blast, fullState());
+    const container = makeContainer(repoIntel, db, llm);
+    const service = new BlastService(container);
+
+    const result = await service.getBlast('ws-1', makePr(), ['src/db/seed.ts']);
+
+    const row = result.downstream.find((d) => d.symbol === 'seed')!;
+    // Only the production caller survives — `.it.test.ts` and `__tests__/*.spec.ts` are dropped.
+    expect(row.callers).toEqual([{ name: 'bootstrap', file: 'src/api/bootstrap.ts', line: 5 }]);
+    expect(row.endpoints_affected).toEqual(['GET /prod']);
+    expect(row.crons_affected).toEqual(['nightly']);
+
+    // Top-level unions carry only the production file's facts — no test fixtures leak in.
+    expect(result.impacted_endpoints).toEqual(['GET /prod']);
+    expect(result.impacted_crons).toEqual(['nightly']);
+    expect(result.summary).toBe('1 symbol(s) changed, 1 downstream caller(s), 1 endpoint(s) impacted.');
+
     expect(llm.calls).toHaveLength(0);
   });
 

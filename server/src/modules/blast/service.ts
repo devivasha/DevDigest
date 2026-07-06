@@ -29,6 +29,17 @@ import { MAX_CALLERS_PER_SYMBOL } from '../repo-intel/constants.js';
 /** Cap on the number of prior-PRs history entries returned. */
 const MAX_HISTORY_ITEMS = 10;
 
+/**
+ * A caller living in a test file isn't a meaningful "blast radius" — changing
+ * a symbol doesn't break its tests the way it breaks a production consumer, and
+ * test files carry endpoint/cron string literals (fixtures) that would flood
+ * the card with false "impacted endpoints". So test-file callers are excluded
+ * from downstream callers AND from the top-level endpoint/cron unions.
+ */
+function isTestFile(path: string): boolean {
+  return /(^|\/)(test|tests|__tests__|__mocks__|e2e)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path);
+}
+
 /** Row shape as read from `pullRequests` (drizzle select result). */
 type PullRequestRow = typeof t.pullRequests.$inferSelect;
 
@@ -48,7 +59,7 @@ export class BlastService {
 
     const downstream: DownstreamImpact[] = blast.changedSymbols.map((sym) => {
       const callers = blast.callers
-        .filter((c) => c.viaSymbol === sym.name)
+        .filter((c) => c.viaSymbol === sym.name && !isTestFile(c.file))
         .slice(0, MAX_CALLERS_PER_SYMBOL)
         .map((c) => ({ name: c.symbol, file: c.file, line: c.line }));
 
@@ -69,22 +80,32 @@ export class BlastService {
       };
     });
 
-    const impactedEndpoints = [...new Set(blast.impactedEndpoints)];
-
+    // Top-level unions come ONLY from non-test caller files. When the facade
+    // provides per-file facts (persistent path) we union those, skipping test
+    // files; otherwise (degraded ripgrep path) there's no file attribution, so
+    // we fall back to the flat list unfiltered.
+    const impactedEndpoints = new Set<string>();
     const impactedCrons = new Set<string>();
     if (blast.factsByFile) {
-      for (const facts of Object.values(blast.factsByFile)) {
+      const nonTestCallerFiles = new Set(
+        blast.callers.filter((c) => !isTestFile(c.file)).map((c) => c.file),
+      );
+      for (const [file, facts] of Object.entries(blast.factsByFile)) {
+        if (!nonTestCallerFiles.has(file)) continue;
+        for (const e of facts.endpoints) impactedEndpoints.add(e);
         for (const c of facts.crons) impactedCrons.add(c);
       }
+    } else {
+      for (const e of blast.impactedEndpoints) impactedEndpoints.add(e);
     }
 
     const totalCallers = downstream.reduce((sum, d) => sum + d.callers.length, 0);
-    const summary = `${blast.changedSymbols.length} symbol(s) changed, ${totalCallers} downstream caller(s), ${impactedEndpoints.length} endpoint(s) impacted.`;
+    const summary = `${blast.changedSymbols.length} symbol(s) changed, ${totalCallers} downstream caller(s), ${impactedEndpoints.size} endpoint(s) impacted.`;
 
     return {
       changed_symbols: blast.changedSymbols.map((s) => ({ name: s.name, file: s.file, kind: s.kind })),
       downstream,
-      impacted_endpoints: impactedEndpoints,
+      impacted_endpoints: [...impactedEndpoints],
       impacted_crons: [...impactedCrons],
       status: state.status,
       degraded: Boolean(blast.degraded || state.degraded),
