@@ -17,6 +17,7 @@
 export * from './contracts/findings';
 export * from './contracts/review-api';
 export * from './contracts/brief';
+export * from './contracts/blast';
 export * from './contracts/knowledge';
 export * from './contracts/trace';
 export * from './contracts/platform';

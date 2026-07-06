@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createDb, type Db } from "./client.js";
 import * as t from "./schema.js";
 import { eq, and } from "drizzle-orm";
+import { INDEXER_VERSION } from "../modules/repo-intel/constants.js";
 
 /**
  * Seed the starter's demo data. Idempotent: re-running upserts the default
@@ -185,6 +186,142 @@ export async function seed(
         confidence: 0.86,
       },
     ]);
+  }
+
+  // ---- Blast Radius demo data (repo-intel persistent index) ----
+  // Reproduces the design's "shared helper touched by many callers" example
+  // on PR #482: a shared rate-limit helper (`rateLimit`, `bucketKey`) with 4
+  // cross-file callers, so `GET /pulls/:id/blast` returns >=2 callers and
+  // >=1 endpoint via the PERSISTENT path (repo_index_state.status = 'full'),
+  // not the degraded ripgrep fallback. Runs every seed pass (not gated on
+  // `!pr`) so it backfills onto an already-seeded PR; every insert below is
+  // idempotently guarded on its own.
+  {
+    const helperPath = "src/api/rate-limit.ts";
+    const callerFiles = [
+      "src/api/public/index.ts",
+      "src/api/public/webhooks.ts",
+      "src/api/public/health.ts",
+      "src/server.ts",
+    ];
+
+    // pr_files: blast reads `changedFiles` straight from pr_files rows for
+    // this PR (see blast/routes.ts), so the helper must be a "changed" file.
+    const [existingHelperFile] = await db
+      .select()
+      .from(t.prFiles)
+      .where(and(eq(t.prFiles.prId, pr!.id), eq(t.prFiles.path, helperPath)));
+    if (!existingHelperFile) {
+      await db.insert(t.prFiles).values({
+        prId: pr!.id,
+        path: helperPath,
+        additions: 22,
+        deletions: 3,
+      });
+    }
+
+    // symbols: the two exported helpers declared in the shared file. Unique
+    // index (repo, path, name, kind, line) makes onConflictDoNothing safe.
+    await db
+      .insert(t.symbols)
+      .values([
+        {
+          repoId,
+          path: helperPath,
+          name: "rateLimit",
+          kind: "function",
+          line: 10,
+          endLine: 24,
+          exported: true,
+          signature: "function rateLimit(req: Request): boolean",
+        },
+        {
+          repoId,
+          path: helperPath,
+          name: "bucketKey",
+          kind: "function",
+          line: 26,
+          endLine: 31,
+          exported: true,
+          signature: "function bucketKey(req: Request): string",
+        },
+      ])
+      .onConflictDoNothing();
+
+    // references: resolved cross-file callers of `rateLimit` / `bucketKey`.
+    // The `references` table has NO unique index (see db/schema/context.ts),
+    // so idempotency is enforced manually below rather than via onConflict.
+    const blastReferences: Array<typeof t.references.$inferInsert> = [
+      { repoId, fromPath: "src/api/public/index.ts", toSymbol: "rateLimit", line: 23, declFile: helperPath },
+      { repoId, fromPath: "src/api/public/webhooks.ts", toSymbol: "rateLimit", line: 45, declFile: helperPath },
+      { repoId, fromPath: "src/api/public/health.ts", toSymbol: "rateLimit", line: 11, declFile: helperPath },
+      { repoId, fromPath: "src/server.ts", toSymbol: "rateLimit", line: 88, declFile: helperPath },
+      { repoId, fromPath: "src/api/public/index.ts", toSymbol: "bucketKey", line: 24, declFile: helperPath },
+      { repoId, fromPath: "src/api/public/webhooks.ts", toSymbol: "bucketKey", line: 46, declFile: helperPath },
+    ];
+    const existingRefs = await db
+      .select({
+        fromPath: t.references.fromPath,
+        toSymbol: t.references.toSymbol,
+        line: t.references.line,
+      })
+      .from(t.references)
+      .where(and(eq(t.references.repoId, repoId), eq(t.references.declFile, helperPath)));
+    const existingRefKeys = new Set(
+      existingRefs.map((r) => `${r.fromPath}|${r.toSymbol}|${r.line}`),
+    );
+    const newRefs = blastReferences.filter(
+      (r) => !existingRefKeys.has(`${r.fromPath}|${r.toSymbol}|${r.line}`),
+    );
+    if (newRefs.length > 0) {
+      await db.insert(t.references).values(newRefs);
+    }
+
+    // file_rank: `getResolvedCallers` INNER JOINs file_rank on (repo, path) —
+    // a caller file with no rank row is silently dropped from the result, so
+    // every caller file needs one. Composite PK makes onConflictDoNothing safe.
+    await db
+      .insert(t.fileRank)
+      .values([
+        { repoId, filePath: "src/api/public/index.ts", pagerank: 0.041, hotness: 0, rank: 0.041, percentile: 92 },
+        { repoId, filePath: "src/api/public/webhooks.ts", pagerank: 0.033, hotness: 0, rank: 0.033, percentile: 85 },
+        { repoId, filePath: "src/api/public/health.ts", pagerank: 0.018, hotness: 0, rank: 0.018, percentile: 60 },
+        { repoId, filePath: "src/server.ts", pagerank: 0.052, hotness: 0, rank: 0.052, percentile: 97 },
+      ])
+      .onConflictDoNothing();
+
+    // file_facts: endpoints/crons attributed to caller files — drives
+    // `impacted_endpoints` / `impacted_crons` and per-symbol facts in the
+    // BlastResponse. Composite PK makes onConflictDoNothing safe.
+    await db
+      .insert(t.fileFacts)
+      .values([
+        { repoId, filePath: "src/api/public/index.ts", endpoints: ["GET /api/public/items"], crons: [] },
+        { repoId, filePath: "src/api/public/webhooks.ts", endpoints: ["POST /api/public/webhooks"], crons: [] },
+        {
+          repoId,
+          filePath: "src/api/public/health.ts",
+          endpoints: ["GET /api/public/health"],
+          crons: ["reset-rate-buckets (hourly)"],
+        },
+      ])
+      .onConflictDoNothing();
+
+    // repo_index_state: status='full' is what promotes getBlastRadius to the
+    // persistent path (repo-intel/service.ts `tryPersistentBlast`) instead of
+    // the degraded ripgrep fallback. PK = repoId, so onConflictDoNothing is safe.
+    await db
+      .insert(t.repoIndexState)
+      .values({
+        repoId,
+        lastIndexedSha: pr!.headSha,
+        indexerVersion: INDEXER_VERSION,
+        status: "full",
+        filesIndexed: callerFiles.length + 1,
+        filesSkipped: 0,
+        stats: {},
+      })
+      .onConflictDoNothing();
   }
 
   // ---- built-in agents (the two starter presets) ----
