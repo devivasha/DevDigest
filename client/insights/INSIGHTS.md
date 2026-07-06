@@ -28,6 +28,8 @@ so the next agent/session doesn't relearn it. Append-only — see the
 
 - **2026-06-29** — `"Package"` is not a valid icon name in `@devdigest/ui`'s icon registry — TypeScript throws `Type '"Package"' is not assignable`. Use `"Boxes"` as the nearest substitute for a package/container icon. ref: `client/src/components/diff-viewer/SmartDiffViewer/GroupSection.tsx`
 
+- **2026-07-05** — "Cannot reach the DevDigest engine at http://localhost:3001. Is the API running?" is a CATCH-ALL for ANY failed `fetch` in `api.ts` — including a CORS rejection — NOT proof the API is down (the API can return 200 on `/health` while the browser call still fails). Root cause found this session: the client `dev` script defaulted to `next dev -p ${WEB_PORT:-3002}` while the server allows exactly ONE CORS origin `http://localhost:${WEB_PORT}` (=3000, `app.ts:90`). UI served from :3002 → cross-origin fetch to :3001 blocked → TypeError surfaced as the "engine unreachable" message. Fix: align the client default port to 3000. ref: `client/src/lib/api.ts:37`, `client/package.json`
+
 ## Session Notes
 
 - **2026-06-29** — Smart Diff feature (token-free): `SmartDiffViewer` groups changed files into core/wiring/boilerplate sections using pure path-pattern classification on the server; finding badges per file and line-level severity chips link to the Agent runs tab via `targetFindingId` state + `data-finding-id` + `scrollIntoView`. "What this does" section uses static patch analysis (no LLM). Files: `SmartDiffViewer/`, `CodeLine/CodeLine.tsx`, `DiffTab/DiffTab.tsx`, `page.tsx`, `ReviewRunAccordion/ReviewRunAccordion.tsx`.

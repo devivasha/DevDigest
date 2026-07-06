@@ -16,6 +16,21 @@
 
 `drizzle-kit` migrations are never applied automatically on server start. Forgetting `pnpm db:migrate` after a schema change will cause runtime DB errors, not startup errors — the server boots fine but queries fail when they hit missing columns.
 
+## `db:migrate` silently no-ops if the DB was migrated on another branch
+
+Drizzle's migrator tracks progress by the journal `when` **timestamp** of the last row in `drizzle.__drizzle_migrations`, not by hash comparison. If your local Postgres was migrated on a branch whose later migrations carry **newer** timestamps than the current branch's pending migrations, `migrate()` decides it is already caught up and applies **nothing** — no error, no output. The pending migrations never run and their columns never appear.
+
+Symptom seen in practice: `GET /repos/:id/conventions` returned `500 … column "created_at" does not exist`. Migrations `0000`–`0008` matched the branch exactly, but DB rows 10–12 were from a divergent lineage (added `conventions.category`, `skills.threat_level`) with timestamps newer than this branch's `0009_fantastic_rogue` (which adds `conventions.created_at`). So `0009` never ran and `pnpm db:migrate` was a no-op.
+
+To diagnose: compare applied hashes to file hashes —
+```bash
+docker exec devdigest-postgres psql -U devdigest -d devdigest -t -A -F',' \
+  -c "select id, hash, created_at from drizzle.__drizzle_migrations order by id;"
+# then in server/src/db/migrations:
+for f in 0*.sql; do echo "$(shasum -a 256 "$f" | awk '{print $1}')  $f"; done
+```
+Rows that match no file are from a foreign lineage. Fixes: either a clean reset (`db:migrate` + `db:seed` on a fresh DB — guarantees schema == branch), or apply the missing migration's SQL by hand (preserves data, but leaves the tracker "ahead" and orphan columns behind). Future migrations generated now get current timestamps, so they apply normally either way.
+
 ## The DB schema has many empty tables
 
 Tables like `skills`, `memory_items`, `eval_cases`, `blast_radius` are fully defined in the schema and migrations, but empty. They are stubs for future course lessons. Do not delete or rename them — they will be filled in later lessons.
