@@ -1,4 +1,5 @@
 {
+  "title": "Blast radius",
   "stat": {
     "symbols": "symbols",
     "callers": "callers",
@@ -11,8 +12,23 @@
   },
   "callerCount": "{count} callers",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
+  "noCallersForSymbol": "No downstream callers found for this symbol.",
+  "empty": "No changed symbols were detected for this pull request.",
+  "error": "Couldn't load the blast radius for this pull request.",
   "graph": {
     "empty": "No downstream callers to graph.",
     "ariaLabel": "Blast radius graph"
+  },
+  "degraded": {
+    "badge": "partial index",
+    "full": "",
+    "partial": "The repository index is partial — some downstream callers may be missing.",
+    "degraded": "The repository index is degraded — results may be incomplete.",
+    "failed": "The repository index could not be read — blast radius may be inaccurate."
+  },
+  "cronBadge": "cron",
+  "priorPrs": {
+    "title": "Prior PRs touching these files",
+    "count": "{count}"
   }
 }

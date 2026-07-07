@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import type { PrMeta, PrDetail, SmartDiff } from "../types";
+import type { BlastResponse } from "@devdigest/shared";
 
 export function usePulls(repoId: string | null | undefined) {
   return useQuery({
@@ -30,6 +31,15 @@ export function useSmartDiff(prId: string | null | undefined) {
     queryKey: ["smart-diff", prId],
     queryFn: () => api.get<SmartDiff>(`/pulls/${prId}/smart-diff`),
     enabled: !!prId,
+    staleTime: 60_000,
+  });
+}
+
+export function useBlastRadius(prId: string | null) {
+  return useQuery({
+    queryKey: ["blast", prId],
+    queryFn: () => api.get<BlastResponse>(`/pulls/${prId}/blast`),
+    enabled: prId != null,
     staleTime: 60_000,
   });
 }
