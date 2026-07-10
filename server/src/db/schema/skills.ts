@@ -32,6 +32,9 @@ export const skills = pgTable("skills", {
   })
     .notNull()
     .default("unknown"),
+  // Ordered list of repo-relative markdown doc paths attached to this skill.
+  // Only paths are persisted — never document text (T2 of project-context plan).
+  attachedDocPaths: jsonb("attached_doc_paths").$type<string[]>().notNull().default([]),
   createdAt: now(),
 });
 

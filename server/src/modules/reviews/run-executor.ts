@@ -19,6 +19,8 @@ import { REVIEW_STRATEGY } from "./constants.js";
 import { taskLine } from "./helpers.js";
 import { loadDiff } from "./diff-loader.js";
 import { IntentService } from "../intent/service.js";
+import { resolveSpecPaths } from "../project-context/injection.js";
+import { readDocument } from "../project-context/documents.js";
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -242,6 +244,15 @@ export class ReviewRunExecutor {
       `Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`,
     );
 
+    // T10 — project-context spec paths read for THIS agent's run. Declared
+    // outside the try so both the success trace AND the failure/cancel trace
+    // (built in the catch block below) can report exactly what was read vs.
+    // missing, even if the run fails after this point (e.g. the LLM call
+    // throws) — a stale/unreadable doc must never fail the run itself.
+    const specTexts: string[] = [];
+    const readPaths: string[] = [];
+    const missing: string[] = [];
+
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
       // key is missing — caught below and persisted as a failed run.)
@@ -303,6 +314,46 @@ export class ReviewRunExecutor {
         );
       }
 
+      // ---- T10: project-context specs (agent + enabled-skill attached docs) --
+      // Snapshot taken ONCE at run start (agent.attachedDocPaths + the enabled
+      // skills' attachedDocPaths loaded above) — an accepted edge case per the
+      // spec: docs attached mid-run are not picked up until the next run.
+      // resolveSpecPaths is pure (no I/O); only ENABLED skills contribute
+      // (skillBodies' filter reused here) and it dedupes agent-first, then
+      // skill-load-order, keeping the first occurrence (AC-19/AC-21).
+      const loadedSkillsForSpecs = linkedSkills
+        .filter((s) => s.skill.enabled)
+        .map((s) => ({ paths: s.skill.attachedDocPaths ?? [] }));
+      const specPaths = resolveSpecPaths({
+        agentPaths: agent.attachedDocPaths ?? [],
+        loadedSkills: loadedSkillsForSpecs,
+      });
+      // Fail-soft: each path is read independently and a stale/unreadable path
+      // (missing file, guard-refused, clone absent, non-UTF-8) is recorded into
+      // `missing` rather than failing the run (AC-22). No memoization across
+      // paths within this loop — duplicates were already removed by
+      // resolveSpecPaths' dedupe, so every remaining path is read exactly once
+      // per agent; re-reads ACROSS agents in the same run are accepted (paths
+      // are typically few and reading is cheap relative to the LLM call).
+      const repoRef = { owner: repo.owner, name: repo.name };
+      for (const path of specPaths) {
+        try {
+          const text = await readDocument(this.container.git, repoRef, path);
+          specTexts.push(text);
+          readPaths.push(path);
+        } catch (err) {
+          missing.push(path);
+          runLog.info(
+            `project-context: doc "${path}" unavailable — ${(err as Error).message}`,
+          );
+        }
+      }
+      if (specTexts.length > 0) {
+        runLog.info(
+          `project-context: ${specTexts.length} doc(s) attached to prompt (${missing.length} missing)`,
+        );
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -330,6 +381,12 @@ export class ReviewRunExecutor {
         // reviewer-core's assemblePrompt wraps it via wrapUntrusted (T1).
         // Omitted when intent computation failed (best-effort).
         ...(intentBlock ? { intent: intentBlock } : {}),
+        // T10 — project-context specs (agent + enabled-skill attached docs),
+        // read fresh above. Passed as RAW text — reviewer-core's assemblePrompt
+        // wraps each one via wrapUntrusted and renders the "## Project context"
+        // section; we must NOT wrap it here ourselves (would double-wrap).
+        // Omitted entirely when nothing was read, so no section is emitted.
+        ...(specTexts.length > 0 ? { specs: specTexts } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -412,7 +469,11 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        // T10 — paths actually read vs. skipped-as-missing/unreadable for this
+        // run's project-context spec injection. `prompt_assembly.specs` above
+        // (from `outcome.assembly`) is already populated by reviewer-core.
+        specs_read: readPaths,
+        specs_missing: missing,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -450,6 +511,12 @@ export class ReviewRunExecutor {
             agent,
             "0/0 passed",
             Date.now() - start,
+            // T10 — whatever was read/skipped before the failure. `readPaths`/
+            // `missing` may be partially populated (e.g. the LLM call failed
+            // AFTER docs were read) or empty (e.g. the failure happened before
+            // spec resolution ran) — either way this is the accurate snapshot.
+            readPaths,
+            missing,
           ),
         )
         .catch(() => undefined);
@@ -569,6 +636,11 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     grounding: string,
     durationMs = 0,
+    // T10 — real read/missing spec paths when the caller has them (the
+    // per-agent catch block does); pre-work failures (failAll, before any
+    // agent-specific spec resolution ran) fall back to the defaults ([]).
+    specsRead: string[] = [],
+    specsMissing: string[] = [],
   ): RunTrace {
     return {
       config: {
@@ -597,7 +669,8 @@ export class ReviewRunExecutor {
       tool_calls: [],
       raw_output: "",
       memory_pulled: [],
-      specs_read: [],
+      specs_read: specsRead,
+      specs_missing: specsMissing,
       log: this.container.runBus
         .buffer(runId)
         .map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),

@@ -51,6 +51,7 @@ function toSkillDto(row: SkillRow): Skill {
     version: row.version,
     evidence_files: (row.evidenceFiles as string[] | null) ?? null,
     threat_level: (row.threatLevel as ThreatLevel) ?? THREAT_LEVEL.UNKNOWN,
+    attached_doc_paths: row.attachedDocPaths,
   };
 }
 
@@ -146,6 +147,20 @@ export class SkillsService {
     version: number,
   ): Promise<Skill | undefined> {
     const row = await this.repo.restore(workspaceId, id, version);
+    return row ? toSkillDto(row) : undefined;
+  }
+
+  /**
+   * Attach/detach/reorder a skill's document paths. Deliberately bypasses
+   * `update()` — this must NOT bump `version`, reset `threat_level`, or
+   * trigger a threat re-scan (those are `body`-change side effects only).
+   */
+  async setAttachedDocs(
+    workspaceId: string,
+    id: string,
+    paths: string[],
+  ): Promise<Skill | undefined> {
+    const row = await this.repo.setAttachedDocs(workspaceId, id, paths);
     return row ? toSkillDto(row) : undefined;
   }
 }

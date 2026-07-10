@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Tabs, Icon, Badge, Toggle } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import { useUpdateSkill } from "@/lib/hooks/skills";
@@ -10,6 +11,7 @@ import { ConfigTab } from "./_components/ConfigTab/ConfigTab";
 import { PreviewTab } from "./_components/PreviewTab/PreviewTab";
 import { StatsTab } from "./_components/StatsTab/StatsTab";
 import { VersionsTab } from "./_components/VersionsTab/VersionsTab";
+import { ContextTab } from "./_components/ContextTab/ContextTab";
 import { TABS } from "./constants";
 
 const VALID_TABS = TABS as readonly string[];
@@ -30,8 +32,13 @@ export function SkillEditor({
   tab: string;
   onTab: (t: string) => void;
 }) {
+  const t = useTranslations("skills");
   const update = useUpdateSkill();
   const activeTab = VALID_TABS.includes(tab) ? tab : "config";
+  const tabDefs = [
+    ...TAB_DEFS,
+    { key: "context", label: t("context.tabLabel"), icon: "FileText" as const },
+  ];
   const { isDangerous, isSuspicious, isScanning, isBlocked, badge } =
     resolveSkillThreat(skill);
 
@@ -150,7 +157,7 @@ export function SkillEditor({
       {/* Tabs */}
       <div style={{ borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <Tabs
-          tabs={TAB_DEFS.map((tb) => ({
+          tabs={tabDefs.map((tb) => ({
             key: tb.key,
             label: tb.label,
             icon: tb.icon,
@@ -167,6 +174,7 @@ export function SkillEditor({
         {activeTab === "preview" && <PreviewTab skill={skill} />}
         {activeTab === "stats" && <StatsTab skillId={skill.id} />}
         {activeTab === "versions" && <VersionsTab skill={skill} />}
+        {activeTab === "context" && <ContextTab skill={skill} />}
       </div>
     </div>
   );

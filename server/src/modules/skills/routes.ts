@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { SkillSource, SkillType } from "@devdigest/shared";
+import { SkillSource, SkillType, SetAttachedDocsBody } from "@devdigest/shared";
 import { getContext } from "../_shared/context.js";
 import { IdParams } from "../_shared/schemas.js";
 import { AppError, NotFoundError } from "../../platform/errors.js";
@@ -20,6 +20,7 @@ import type { ThreatLevel } from "./scanner.js";
  *   GET    /skills/:id/stats        → skill stats
  *   GET    /skills/:id/versions     → version history
  *   POST   /skills/:id/restore      → restore body from historical version (201)
+ *   PUT    /skills/:id/attached-docs → set attached doc paths (no version bump, no re-scan)
  *
  * NOTE: /skills/import and /:id/stats, /:id/versions, /:id/restore are registered
  * BEFORE the plain /:id routes so Fastify does not treat "import" as a uuid param.
@@ -183,6 +184,23 @@ export default async function skillsRoutes(appBase: FastifyInstance) {
       );
       if (!skill) throw new NotFoundError("Skill or version not found");
       reply.status(201);
+      return skill;
+    },
+  );
+
+  // Attach/detach/reorder document paths — does NOT bump version, reset
+  // threat_level, or trigger a re-scan (distinct from PUT /skills/:id).
+  app.put(
+    "/skills/:id/attached-docs",
+    { schema: { params: IdParams, body: SetAttachedDocsBody } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      const skill = await service.setAttachedDocs(
+        workspaceId,
+        req.params.id,
+        req.body.paths,
+      );
+      if (!skill) throw new NotFoundError("Skill not found");
       return skill;
     },
   );

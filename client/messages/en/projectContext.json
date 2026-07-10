@@ -1,0 +1,38 @@
+{
+  "breadcrumb": "Project Context",
+  "title": "Project Context",
+  "subtitle": "Markdown docs under specs/, docs/, and insights/ folders — read fresh on every run.",
+  "errorTitle": "Could not load project context.",
+  "errorBody": "Something went wrong loading this repo's documents.",
+  "notAvailable": {
+    "title": "No local clone available",
+    "body": "This repo hasn't been cloned locally yet, so its documents can't be discovered. Once it's cloned, files under specs/, docs/, and insights/ folders will appear here."
+  },
+  "list": {
+    "emptyTitle": "No documents found",
+    "emptyBody": "Add markdown files under a specs/, docs/, or insights/ folder in this repo to see them here.",
+    "bucket": {
+      "specs": "Spec",
+      "docs": "Doc",
+      "insights": "Insight"
+    },
+    "previewLabel": "Preview {filename}"
+  },
+  "footer": {
+    "summary": "{count} documents · ≈ {tokens} tokens total · refreshed {relative}",
+    "justNow": "just now",
+    "minutesAgo": "{count, plural, one {# minute ago} other {# minutes ago}}",
+    "hoursAgo": "{count, plural, one {# hour ago} other {# hours ago}}",
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+  },
+  "drawer": {
+    "previewTab": "Preview",
+    "editTab": "Edit",
+    "editLabel": "Edit {filename}",
+    "resyncWarning": "Editing here does not commit to git. A repo resync runs \"git reset --hard\", which discards any uncommitted changes to this file.",
+    "save": "Save",
+    "saveSuccess": "Saved.",
+    "saveError": "Could not save this document. Try again.",
+    "loadError": "Could not load this document."
+  }
+}

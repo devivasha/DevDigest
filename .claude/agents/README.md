@@ -8,26 +8,28 @@ trigger rules ("Use proactively when…").
 | Agent | Model | Role | Writes code? |
 |-------|-------|------|--------------|
 | [`researcher`](./researcher.md) | sonnet | Read-only research (project + internet), strict structured output | No |
-| [`planner`](./planner.md) | opus | Read-only architect — produces a structured Development Plan | No (only the plan file) |
+| [`implementation-planner`](./implementation-planner.md) | opus | Read-only architect — verifies requirements and produces a structured Implementation Plan (does not author specs) | No (only the plan file) |
 | [`implementer`](./implementer.md) | sonnet | Implements ONE task from a plan (backend or UI), self-verifies | Yes |
-| [`test-writer`](./test-writer.md) | sonnet | Writes unit + integration tests (backend + reviewer-core), self-verifies | Yes |
-| [`architecture-reviewer`](./architecture-reviewer.md) | opus | Read-only structural/architecture review of a diff or file set | No |
-| [`plan-verifier`](./plan-verifier.md) | opus | Read-only requirements-completion / traceability check | No |
+| [`test-writer`](./test-writer.md) | sonnet | Writes unit + integration tests (backend + reviewer-core + client), self-verifies | Yes |
+| [`architecture-reviewer`](./architecture-reviewer.md) | sonnet | Read-only structural/architecture review of a diff or file set | No |
+| [`plan-verifier`](./plan-verifier.md) | sonnet | Read-only requirements-completion / traceability check | No |
 | [`doc-writer`](./doc-writer.md) | sonnet | Writes documentation (Diátaxis + Mermaid), knows where docs belong | Yes |
 
 ## Intended workflow
 
 ```
-you / main session
-   └─ planner (opus, read-only) → docs/plans/<feature>.md
-         (phased tasks with Type · Skills · Owned paths · Depends-on · Acceptance)
-         └─ N× implementer (sonnet, parallel) — one task each, inside its Owned paths
+you / main session  →  agreed requirements (spec / ticket / clear request)
+   └─ implementation-planner (opus, read-only) → docs/plans/<feature>.md
+         (verifies requirements · recommends · asks execution mode;
+          phased tasks with Type · Skills · Owned paths · Depends-on · Acceptance)
+         └─ implementer(s) (sonnet) — multi-agent in parallel, or a single one-pass run
                └─ pr-self-review (existing skill) — final gate before push
 ```
 
 The pipeline mirrors Claude Code's recommended **Explore → Plan → Implement → Commit** loop: the
-planner runs read-only during Plan, the implementers run during Implement, and review stays a
-separate fresh-context step.
+implementation-planner runs read-only during Plan, the implementers run during Implement, and review
+stays a separate fresh-context step. Requirements (the *what/why*) are an **input** to the planner —
+it never authors or edits a specification.
 
 ---
 
@@ -35,18 +37,23 @@ separate fresh-context step.
 
 Pre-existing read-only research agent. Finds information inside the project or on the public
 internet and returns it in a strict template. Never edits files, never runs deep-research. The
-planner and implementer both follow its writing conventions (YAML frontmatter + Hard rules + fixed
-output template).
+implementation-planner and implementer both follow its writing conventions (YAML frontmatter +
+Hard rules + fixed output template).
 
 ---
 
-## `planner`
+## `implementation-planner`
 
-**What it does.** Turns a request into a structured, file-specific **Development Plan** written to
-`docs/plans/<feature>.md`. Knows every DevDigest module (`server/`, `client/`, `reviewer-core/`,
-`e2e/`, `@devdigest/shared`) and assigns each task a `Type`, a skill set, non-overlapping
-`Owned paths`, dependencies (a DAG), known gotchas from module insights, and measurable acceptance
-criteria. Read-only except for the plan file.
+**What it does.** Turns an **agreed set of requirements** (a spec, ticket, or clear request) into a
+structured, file-specific **Implementation Plan** written to `docs/plans/<feature>.md`. It does
+**not** author or edit specifications — requirements are an *input* it plans against. Before
+planning it (1) **verifies the requirements** — restating them, flagging gaps, asking 1–4 clarifying
+questions, and offering recommendations for a better approach — and (2) **asks the execution mode**:
+multi-agent (parallel implementers, strictly non-overlapping `Owned paths`) or single-agent (one
+linear pass). It knows every DevDigest module (`server/`, `client/`, `reviewer-core/`, `e2e/`,
+`@devdigest/shared`) and assigns each task a `Type`, a skill set, owned paths, dependencies (a DAG),
+known gotchas from module insights, and measurable acceptance criteria. Read-only except for the
+plan file.
 
 **Carries the full skill set.** It preloads the same skills the implementer uses (backend + UI +
 core practices) plus `mermaid-diagram`, on purpose: it plans the implementation, so every practice
@@ -68,7 +75,7 @@ an implementer must follow has to be reflected in the plan.
 
 ## `implementer`
 
-**What it does.** Implements exactly one task from a Development Plan — backend (Fastify/Drizzle/
+**What it does.** Implements exactly one task from an Implementation Plan — backend (Fastify/Drizzle/
 onion) or UI (Next.js/React) — and brings it to green. Runs in parallel with other implementers on
 the **same branch** (no worktree isolation), so staying inside the task's `Owned paths` is what
 keeps the parallel run safe. Its self-check is narrow: write the code and make the module's existing
@@ -96,11 +103,13 @@ by choice, relying on `Owned paths` discipline instead of worktree isolation).
 
 ## `test-writer`
 
-**What it does.** Adds or extends unit and integration tests for the DevDigest backend (`server/`)
-and the LLM review engine (`reviewer-core/`). It enforces the project's test split (`*.it.test.ts`
-= real Postgres via testcontainers with transaction-rollback isolation; `*.test.ts` = hermetic unit
-with fake timers and seeded ids), injects a `FakeLlmProvider` at the `LLMProvider` seam for
-reviewer-core tests, and never modifies production `src/` files (only a type export strictly
+**What it does.** Adds or extends tests for the DevDigest backend (`server/`), the LLM review engine
+(`reviewer-core/`), and the web client (`client/` — React components and hooks via vitest + jsdom +
+React Testing Library). It enforces the project's test split (`*.it.test.ts` = real Postgres via
+testcontainers with transaction-rollback isolation; `*.test.ts` = hermetic unit with fake timers and
+seeded ids; client tests are always hermetic, RTL-driven, querying by accessible role/text and
+mocking only I/O seams), injects a `FakeLlmProvider` at the `LLMProvider` seam for reviewer-core
+tests, and never modifies production `src/` files (only a type export strictly
 required to compile a test is permitted). Forbidden anti-patterns are encoded directly in its body:
 tautological assertions, over-mocking, snapshot tests on dynamic output, and non-deterministic test
 bodies. Self-verifies by running the affected suites and pasting terminal evidence before reporting
@@ -125,9 +134,10 @@ are the always-on set.
 ## `architecture-reviewer`
 
 **What it does.** A **read-only** structural auditor (`tools: Read, Glob, Grep` — no `Edit`,
-`Write`, or `Bash`). Given a diff or file set, it reads the project's own authoritative docs first
-(`CLAUDE.md`, `server/CLAUDE.md`, `server/docs/architecture.md`, `reviewer-core/CLAUDE.md`,
-`reviewer-core/docs/pipeline.md`) and then checks seven named rules: inward-only dependencies,
+`Write`, or `Bash`). It audits the changed-file set the caller passes (never the whole repo) and
+reads the project's authoritative docs **only for the layers that set touches** — always root
+`CLAUDE.md`, plus the `server/` and/or `reviewer-core/` docs when those modules are in the set — then
+checks seven named rules: inward-only dependencies,
 business logic in routes, DI discipline, no `process.env` outside `LocalSecretsProvider`,
 `reviewer-core` zero-I/O, `groundFindings()` gate, and shared-contract deduplication. Every finding
 must cite the exact rule it violates; uncited generic opinions are suppressed. Write tools are
@@ -151,7 +161,7 @@ only.
 ## `plan-verifier`
 
 **What it does.** A **read-only** completeness checker (`tools: Read, Glob, Grep, Bash` — no
-`Edit` or `Write`). Given a Development Plan, it walks every requirement and acceptance criterion,
+`Edit` or `Write`). Given an Implementation Plan, it walks every requirement and acceptance criterion,
 searches for the concrete implementing artifact (grep → structural glob → read), quotes verbatim
 evidence, and assigns one of four statuses: `done | partial | missing | cannot-verify`. `Bash` is
 used only to run grep/typecheck commands and capture output as evidence — never to modify state.

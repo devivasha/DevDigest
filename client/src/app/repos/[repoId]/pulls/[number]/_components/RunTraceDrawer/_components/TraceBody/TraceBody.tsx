@@ -5,6 +5,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@devdigest/ui";
+import type { CSSProperties } from "react";
 import type { RunTrace, FindingRecord } from "@devdigest/shared";
 import { PROMPT_COLORS } from "../../constants";
 import { formatCost, formatSeconds, formatTokens } from "../../helpers";
@@ -14,6 +15,16 @@ import { ToolCallRow } from "../ToolCallRow";
 import { PromptBlock } from "../PromptBlock";
 import { FindingsSection } from "../FindingsSection";
 import { Row, Stat } from "../atoms";
+
+// Local styling for the specs-missing row: visually distinct (warn color,
+// strikethrough) from the specs-read row so a dropped/stale spec stands out.
+// Kept local to TraceBody rather than added to the shared styles.ts (owned by
+// this task's file scope only).
+const specsMissingStyle: CSSProperties = {
+  fontSize: 12,
+  color: "var(--warn)",
+  textDecoration: "line-through",
+};
 
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
   const t = useTranslations("runs");
@@ -48,6 +59,17 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
               )}
             </div>
           </Row>
+          {trace.specs_missing.length > 0 && (
+            <Row label={t("trace.config.specsMissing")}>
+              <div style={s.specsWrap}>
+                {trace.specs_missing.map((sp, i) => (
+                  <span key={i} className="mono" style={specsMissingStyle}>
+                    {sp}
+                  </span>
+                ))}
+              </div>
+            </Row>
+          )}
         </div>
       </TraceSection>
 

@@ -25,43 +25,5 @@
         ]
       }
     ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git status*)",
-      "Bash(git add*)",
-      "Bash(git commit*)",
-      "Bash(git checkout*)",
-      "Bash(git branch*)",
-      "Bash(git fetch*)",
-      "Bash(git pull*)",
-      "Bash(git push*)",
-      "Bash(pnpm*)",
-      "Bash(npm*)",
-      "Bash(node*)",
-      "Bash(tsx*)",
-      "Bash(docker ps*)",
-      "Bash(docker exec*)",
-      "Bash(curl*)",
-      "Bash(cat*)",
-      "Bash(ls*)",
-      "Bash(find*)",
-      "Bash(grep*)",
-      "Bash(echo*)",
-      "Read(*)",
-      "Write(src/**)",
-      "Write(.claude/**)"
-    ],
-    "deny": [
-      "Bash(rm -rf*)",
-      "Bash(sudo*)",
-      "Bash(chmod 777*)",
-      "Bash(git push --force*)",
-      "Bash(docker rm*)",
-      "Bash(dropdb*)",
-      "Bash(git reset --hard*)"
-    ]
   }
 }
