@@ -1,13 +1,65 @@
 {
-  "title": "Onboarding Tour",
-  "sections": "Sections",
-  "sectionCount": "{count} sections",
+  "breadcrumb": "Onboarding Tour",
+  "titlePrefix": "Onboarding for",
+  "subtitle": "Generated from index of {count, plural, =0 {no files} =1 {1 file} other {# files}} · last refreshed {relative}",
+  "relative": {
+    "now": "just now",
+    "minutes": "{count, plural, one {# minute ago} other {# minutes ago}}",
+    "hours": "{count, plural, one {# hour ago} other {# hours ago}}",
+    "days": "{count, plural, one {# day ago} other {# days ago}}"
+  },
+  "onThisPage": "On this page",
   "regenerate": "Regenerate",
   "regenerating": "Regenerating…",
+  "shareLink": "Share link",
+  "linkCopied": "Link copied",
+  "copied": "Copied",
+  "copyFailed": "Copy failed",
   "unknownError": "Unknown error",
+  "open": "Open",
+  "openLabel": "Open {path}",
+  "degraded": {
+    "badge": "Degraded",
+    "cta": "Add or index this repo",
+    "largeRepoNote": "Large repo — showing top results",
+    "reason": {
+      "flag_off": "Repo indexing is turned off for this repo.",
+      "index_failed": "The last indexing run failed.",
+      "index_partial": "Indexing only completed partially.",
+      "repo_too_large": "This repo is too large to index in full.",
+      "no_data": "This repo hasn't been cloned or indexed yet."
+    }
+  },
+  "stale": {
+    "hint": "Facts changed since this tour was generated — regenerate for the latest version."
+  },
+  "sections": {
+    "architecture": {
+      "title": "Architecture overview",
+      "empty": "No architecture summary available yet."
+    },
+    "criticalPaths": {
+      "title": "Critical paths",
+      "empty": "No critical paths identified yet.",
+      "usedBy": "{count, plural, one {Used by # caller} other {Used by # callers}}"
+    },
+    "howToRun": {
+      "title": "How to run locally",
+      "empty": "No setup commands available yet.",
+      "copyLabel": "Copy command: {command}"
+    },
+    "readingPath": {
+      "title": "Guided reading path",
+      "empty": "No guided reading path available yet."
+    },
+    "firstTasks": {
+      "title": "First tasks",
+      "empty": "No starter tasks available yet."
+    }
+  },
   "generate": {
-    "title": "Generate onboarding tour",
-    "body": "DevDigest indexes the repo and specs, then writes a 5-section guided tour: overview, architecture, key modules, getting started, and conventions & gotchas.",
+    "title": "How this tour is generated",
+    "body": "DevDigest collects facts from the repo index at zero LLM cost, then writes five guided sections: architecture overview, critical paths, how to run locally, guided reading path, and first tasks.",
     "cta": "Generate onboarding tour",
     "generating": "Generating…"
   },

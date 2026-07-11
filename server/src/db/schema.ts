@@ -25,6 +25,7 @@ export * from './schema/ci';
 export * from './schema/runs';
 export * from './schema/ops';
 export * from './schema/repo-intel';
+export * from './schema/onboarding';
 
 import { users, workspaces, workspaceMembers, settings } from './schema/core';
 import { repos } from './schema/repos';
@@ -33,7 +34,7 @@ import { reviews, findings, prIntent, prBrief } from './schema/reviews';
 import { skills, skillVersions } from './schema/skills';
 import { agents, agentVersions, agentSkills } from './schema/agents';
 import { memory, conventions } from './schema/knowledge';
-import { codeChunks, symbols, references, onboarding } from './schema/context';
+import { codeChunks, symbols, references } from './schema/context';
 import { evalCases, evalRuns, conformanceChecks, composedReviews } from './schema/eval';
 import { ciInstallations, ciRuns } from './schema/ci';
 import { agentRuns, runTraces, multiAgentRuns } from './schema/runs';
@@ -45,6 +46,7 @@ import {
   fileRank,
   repoMapCache,
 } from './schema/repo-intel';
+import { onboardingTours } from './schema/onboarding';
 
 /** Convenience: the full schema object for drizzle() client typing. */
 export const schema = {
@@ -70,7 +72,6 @@ export const schema = {
   codeChunks,
   symbols,
   references,
-  onboarding,
   evalCases,
   evalRuns,
   conformanceChecks,
@@ -89,4 +90,5 @@ export const schema = {
   fileFacts,
   fileRank,
   repoMapCache,
+  onboardingTours,
 };

@@ -26,20 +26,24 @@ import {
   parseSymbols,
   langForFile,
 } from '../../adapters/astgrep/index.js';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { RepoIntelRepository, type FullSymbolRow } from './repository.js';
 import type {
   BlastCallerRow,
   BlastChangedSymbol,
   BlastResult,
+  FileRankDetail,
   FileRankRow,
   IndexResult,
   IndexState,
   RefRow,
   RepoIntel,
   RepoMapResult,
+  SetupCommand,
+  SetupCommandsResult,
   SignatureRow,
+  StackFacts,
   SymbolRow,
 } from './types.js';
 import {
@@ -700,6 +704,170 @@ export class RepoIntelService implements RepoIntel {
     }
     return paths;
   }
+
+  // -------------------------------------------------------------------------
+  // Onboarding facade extensions (onboarding-generator T3). Additive only —
+  // no existing method above is touched. All five are fail-soft: they never
+  // throw, degrading to an empty/best-effort result instead (per the module's
+  // header degraded contract).
+  // -------------------------------------------------------------------------
+
+  /**
+   * Top-N files by rank DESC (reuses `file_rank_repo_rank_idx`), with the
+   * full rank/pagerank/hotness/percentile detail. Reads the STORED
+   * `file_rank.rank` column — does NOT recompute `pagerank * (1 + hotness)`
+   * (hotness is hardwired 0 today, so rank === pagerank). Same over-fetch +
+   * junk-path + `exclude` filtering as `getTopFilesByRank`.
+   */
+  async getTopFilesByRankDetailed(
+    repoId: string,
+    n: number,
+    opts?: { exclude?: string[] },
+  ): Promise<FileRankDetail[]> {
+    try {
+      if (!this.container.config.repoIntelEnabled) return [];
+      if (n <= 0) return [];
+      const exclude = opts?.exclude ?? [];
+      const rows = await this.repo.getRankedPathsDetailed(repoId, Math.max(n * 10, 100));
+      const out: FileRankDetail[] = [];
+      for (const r of rows) {
+        if (isJunkPath(r.path)) continue;
+        if (exclude.some((e) => r.path.includes(e))) continue;
+        out.push(r);
+        if (out.length >= n) break;
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  /** Importer (caller) count per given file path, via `file_edges` fan-in. */
+  async getFileImporterCounts(repoId: string, paths: string[]): Promise<Record<string, number>> {
+    try {
+      if (!this.container.config.repoIntelEnabled) return {};
+      if (paths.length === 0) return {};
+      const rows = await this.repo.getImporterCounts(repoId, paths);
+      const out: Record<string, number> = {};
+      for (const r of rows) out[r.path] = r.count;
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Repo-wide "METHOD /path" inventory, aggregated across ALL indexed files'
+   * `file_facts.endpoints` — intentionally outside the top-N framing (routes
+   * are a global inventory, not a top-N slice). Deduped + sorted for
+   * deterministic output; `limit` caps the result count, not the scan.
+   */
+  async getRouteInventory(repoId: string, limit?: number): Promise<string[]> {
+    try {
+      if (!this.container.config.repoIntelEnabled) return [];
+      const rows = await this.repo.getAllFileFactsEndpoints(repoId);
+      const set = new Set<string>();
+      for (const endpoints of rows) {
+        for (const e of endpoints) set.add(e);
+      }
+      const all = [...set].sort();
+      return limit != null ? all.slice(0, limit) : all;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Languages/frameworks/package-manager, detected from the clone's
+   * `package.json` (deps → framework via `FRAMEWORK_ALLOWLIST`) + lockfile
+   * presence. Missing clone / unreadable `package.json` → empty + degraded.
+   */
+  async getStackFacts(repoId: string): Promise<StackFacts> {
+    try {
+      if (!this.container.config.repoIntelEnabled) {
+        return { languages: [], frameworks: [], degraded: true, reason: 'flag_off' };
+      }
+      const repo = await this.repo.getRepoBasics(repoId);
+      if (!repo || !repo.clonePath) {
+        return { languages: [], frameworks: [], degraded: true, reason: 'no_data' };
+      }
+      const pkgRaw = await readClone(repo.clonePath, 'package.json');
+      if (pkgRaw == null) {
+        return { languages: [], frameworks: [], degraded: true, reason: 'no_data' };
+      }
+      let pkg: PackageJson;
+      try {
+        pkg = JSON.parse(pkgRaw) as PackageJson;
+      } catch {
+        return { languages: [], frameworks: [], degraded: true, reason: 'index_failed' };
+      }
+      const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+      const frameworks: string[] = [];
+      for (const [dep, label] of Object.entries(FRAMEWORK_ALLOWLIST)) {
+        if (dep in deps) frameworks.push(label);
+      }
+      const hasTsconfig = (await cloneFileExists(repo.clonePath, 'tsconfig.json')) || 'typescript' in deps;
+      const languages = hasTsconfig ? ['TypeScript'] : ['JavaScript'];
+      const packageManager = await detectPackageManager(repo.clonePath);
+      return { languages, frameworks, packageManager };
+    } catch {
+      return { languages: [], frameworks: [], degraded: true, reason: 'index_failed' };
+    }
+  }
+
+  /**
+   * Ordered install/build/dev commands from `package.json` `scripts` +
+   * docker-compose presence. Missing clone / unreadable `package.json` →
+   * empty + degraded. Display-only downstream — never executed here either.
+   */
+  async getSetupCommands(repoId: string): Promise<SetupCommandsResult> {
+    try {
+      if (!this.container.config.repoIntelEnabled) {
+        return { commands: [], degraded: true, reason: 'flag_off' };
+      }
+      const repo = await this.repo.getRepoBasics(repoId);
+      if (!repo || !repo.clonePath) {
+        return { commands: [], degraded: true, reason: 'no_data' };
+      }
+      const pkgRaw = await readClone(repo.clonePath, 'package.json');
+      if (pkgRaw == null) {
+        return { commands: [], degraded: true, reason: 'no_data' };
+      }
+      let pkg: PackageJson;
+      try {
+        pkg = JSON.parse(pkgRaw) as PackageJson;
+      } catch {
+        return { commands: [], degraded: true, reason: 'index_failed' };
+      }
+
+      const packageManager = await detectPackageManager(repo.clonePath);
+      const runner = packageManager ?? 'npm';
+      const runScript = (name: string): string =>
+        runner === 'npm' ? `npm run ${name}` : `${runner} ${name}`;
+
+      const commands: SetupCommand[] = [];
+      commands.push({ command: runner === 'npm' ? 'npm install' : `${runner} install` });
+
+      const hasCompose =
+        (await cloneFileExists(repo.clonePath, 'docker-compose.yml')) ||
+        (await cloneFileExists(repo.clonePath, 'docker-compose.yaml'));
+      if (hasCompose) {
+        commands.push({
+          command: 'docker compose up -d',
+          note: 'starts local service dependencies',
+        });
+      }
+
+      const scripts = pkg.scripts ?? {};
+      if (scripts.build) commands.push({ command: runScript('build') });
+      if (scripts.dev) commands.push({ command: runScript('dev') });
+      else if (scripts.start) commands.push({ command: runScript('start') });
+
+      return { commands };
+    } catch {
+      return { commands: [], degraded: true, reason: 'index_failed' };
+    }
+  }
 }
 
 /** How many top-ranked files seed `getCriticalPaths` dependency chains. */
@@ -761,4 +929,51 @@ function enclosingSymbolName(
 
 async function readClone(clonePath: string, file: string): Promise<string | null> {
   return readFile(join(clonePath, file), 'utf8').catch(() => null);
+}
+
+/** True iff `file` exists under the clone. Existence-only (no content read) —
+ * used for lockfile / docker-compose / tsconfig detection. */
+async function cloneFileExists(clonePath: string, file: string): Promise<boolean> {
+  return stat(join(clonePath, file))
+    .then(() => true)
+    .catch(() => false);
+}
+
+/** Minimal shape this module reads from a repo's `package.json`. */
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
+
+/**
+ * Small allowlist mapping a `package.json` dependency name to a human
+ * framework label, for `getStackFacts`. Deliberately small/curated — this is
+ * a "what does the index show" heuristic (AC-13-adjacent: grounded, not
+ * invented), not an exhaustive ecosystem detector.
+ */
+const FRAMEWORK_ALLOWLIST: Record<string, string> = {
+  react: 'React',
+  next: 'Next.js',
+  fastify: 'Fastify',
+  express: 'Express',
+  '@nestjs/core': 'NestJS',
+  vue: 'Vue',
+  '@angular/core': 'Angular',
+  svelte: 'Svelte',
+  'drizzle-orm': 'Drizzle ORM',
+  prisma: 'Prisma',
+  mongoose: 'Mongoose',
+  vitest: 'Vitest',
+  jest: 'Jest',
+  tailwindcss: 'Tailwind CSS',
+  '@tanstack/react-query': 'TanStack Query',
+};
+
+/** Detect the repo's package manager from its lockfile, if any. */
+async function detectPackageManager(clonePath: string): Promise<string | undefined> {
+  if (await cloneFileExists(clonePath, 'pnpm-lock.yaml')) return 'pnpm';
+  if (await cloneFileExists(clonePath, 'yarn.lock')) return 'yarn';
+  if (await cloneFileExists(clonePath, 'package-lock.json')) return 'npm';
+  return undefined;
 }

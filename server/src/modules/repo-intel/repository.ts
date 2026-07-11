@@ -17,7 +17,13 @@ import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
-import type { DegradedReason, FileRankRow, IndexState, IndexStatus } from './types.js';
+import type {
+  DegradedReason,
+  FileRankDetail,
+  FileRankRow,
+  IndexState,
+  IndexStatus,
+} from './types.js';
 
 /** Chunk size for batched inserts — same value blast already uses. */
 const INSERT_CHUNK_SIZE = 500;
@@ -587,6 +593,61 @@ export class RepoIntelRepository {
   /** Drop the whole repo-map cache for a repo (SHA moved / repo reindex). */
   async deleteRepoMapCache(repoId: string): Promise<void> {
     await this.db.delete(t.repoMapCache).where(eq(t.repoMapCache.repoId, repoId));
+  }
+
+  // -------------------------------------------------------------------------
+  // Onboarding facade extensions (onboarding-generator T3) — reads only.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Top `limit` paths by rank DESC with the full `file_rank` detail columns
+   * (onboarding critical-path scoring + guided reading path). Reuses
+   * `file_rank_repo_rank_idx`; caller filters junk paths / applies `exclude`
+   * in JS, same over-fetch pattern as `getRankedPaths`.
+   */
+  async getRankedPathsDetailed(repoId: string, limit: number): Promise<FileRankDetail[]> {
+    return this.db
+      .select({
+        path: t.fileRank.filePath,
+        rank: t.fileRank.rank,
+        pagerank: t.fileRank.pagerank,
+        hotness: t.fileRank.hotness,
+        percentile: t.fileRank.percentile,
+      })
+      .from(t.fileRank)
+      .where(eq(t.fileRank.repoId, repoId))
+      .orderBy(desc(t.fileRank.rank))
+      .limit(limit);
+  }
+
+  /**
+   * Importer (caller) count per file, via `file_edges` reverse fan-in
+   * (`(repoId, toFile)` is indexed). Only files with ≥1 importer appear in
+   * the result — callers treat a missing key as 0.
+   */
+  async getImporterCounts(
+    repoId: string,
+    paths: string[],
+  ): Promise<Array<{ path: string; count: number }>> {
+    if (paths.length === 0) return [];
+    return this.db
+      .select({ path: t.fileEdges.toFile, count: sql<number>`count(*)::int` })
+      .from(t.fileEdges)
+      .where(and(eq(t.fileEdges.repoId, repoId), inArray(t.fileEdges.toFile, paths)))
+      .groupBy(t.fileEdges.toFile);
+  }
+
+  /**
+   * Every `file_facts.endpoints` array for a repo, repo-wide (route
+   * inventory) — NOT scoped to a changed-file set (that's `getFileFacts`,
+   * used by blast). Caller unions + dedupes + caps in JS.
+   */
+  async getAllFileFactsEndpoints(repoId: string): Promise<string[][]> {
+    const rows = await this.db
+      .select({ endpoints: t.fileFacts.endpoints })
+      .from(t.fileFacts)
+      .where(eq(t.fileFacts.repoId, repoId));
+    return rows.map((r) => (r.endpoints as string[]) ?? []);
   }
 
   /**

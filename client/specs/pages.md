@@ -36,6 +36,13 @@ Each page, its data sources, and TanStack Query keys.
 - "Run Review" → `POST /pulls/:id/review` → receives `runId` → subscribes to `useRunEvents(runId)`
 - Reviews list updates via `invalidateQueries(["reviews", pullId])` on `completed` SSE event
 
+## `/repos/:id/onboarding` — Onboarding Tour
+
+**Component:** `app/repos/[repoId]/onboarding/page.tsx` (thin RSC shell → `OnboardingTourView` client component)
+**Data:** `useOnboardingTour(repoId)` → `GET /repos/:id/onboarding`
+**Query key:** `["onboarding-tour", repoId]`
+**Actions:** "Regenerate" → `useRegenerateTour(repoId)` → `POST /repos/:id/onboarding/generate` (body-less) → on success, writes the response straight into the `["onboarding-tour", repoId]` cache entry via `setQueryData`. Distinct from the first-run wizard at `/onboarding` — this is a per-repo surface, not a workspace setup flow.
+
 ## `/agents` — Agent Management
 
 **Component:** `app/agents/page.tsx` (client)
