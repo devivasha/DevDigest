@@ -57,11 +57,41 @@ function isAtBottom(scroller: HTMLElement | Window): boolean {
   return el.scrollTop + el.clientHeight >= el.scrollHeight - SCROLL_BOTTOM_THRESHOLD_PX;
 }
 
+/** Keys that mean "the user is scrolling" — used to release a click-selected
+ *  section back to scroll-driven tracking. */
+const SCROLL_KEYS = new Set([
+  "ArrowDown",
+  "ArrowUp",
+  "PageDown",
+  "PageUp",
+  "Home",
+  "End",
+  " ",
+  "Spacebar",
+]);
+
 /** Tracks which section is nearest the top of the viewport, for the "ON THIS
  *  PAGE" nav's active-item highlight. IntersectionObserver is an external
- *  browser API — a legitimate useEffect synchronization, not derived state. */
-function useActiveSectionId(ready: boolean): string | null {
+ *  browser API — a legitimate useEffect synchronization, not derived state.
+ *
+ *  Returns `onSelect` so a nav click can set the active item explicitly: a
+ *  clicked section that sits near the bottom can't scroll to the top active-
+ *  band (the page bottoms out first), so scroll tracking alone would highlight
+ *  the wrong item. The click choice is held until the user actually scrolls
+ *  again (wheel / touch / scroll key) — the programmatic anchor jump does not
+ *  release it. */
+function useActiveSectionId(ready: boolean): {
+  activeId: string | null;
+  onSelect: (id: string) => void;
+} {
   const [activeId, setActiveId] = React.useState<string | null>(null);
+  // While set, scroll tracking is suspended so the clicked item stays lit.
+  const lockRef = React.useRef<string | null>(null);
+
+  const onSelect = React.useCallback((id: string) => {
+    lockRef.current = id;
+    setActiveId(id);
+  }, []);
 
   React.useEffect(() => {
     if (!ready) return;
@@ -75,40 +105,57 @@ function useActiveSectionId(ready: boolean): string | null {
 
     // The last section (often the shortest — First tasks) can never reach the
     // top active-band once the page is scrolled to the bottom, so it would
-    // never highlight. Pin it explicitly whenever we're at the bottom;
-    // otherwise pick the topmost intersecting section.
-    const recompute = (entries: IntersectionObserverEntry[]) => {
-      if (isAtBottom(scroller)) {
-        setActiveId(lastId);
-        return;
-      }
-      const visible = entries.filter((e) => e.isIntersecting);
-      if (visible.length > 0) {
-        const top = visible.reduce((a, b) => (a.boundingClientRect.top < b.boundingClientRect.top ? a : b));
-        setActiveId(top.target.id);
-      }
-    };
-
-    const observer = new IntersectionObserver(recompute, { rootMargin: "-10% 0px -70% 0px" });
+    // never highlight. Pin it whenever we're at the bottom; otherwise pick the
+    // topmost intersecting section. Suspended while a click selection is held.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (lockRef.current) return;
+        if (isAtBottom(scroller)) {
+          setActiveId(lastId);
+          return;
+        }
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          const top = visible.reduce((a, b) => (a.boundingClientRect.top < b.boundingClientRect.top ? a : b));
+          setActiveId(top.target.id);
+        }
+      },
+      { rootMargin: "-10% 0px -70% 0px" },
+    );
     elements.forEach((el) => observer.observe(el));
 
     // The observer stops firing once you settle at the bottom, so re-check the
-    // bottom case on scroll too (covers clicking the last nav item, which jumps
-    // to a section that can't scroll to the top).
+    // bottom case on scroll too (covers scrolling all the way down to the last,
+    // often short, section).
     const onScroll = () => {
-      if (isAtBottom(scroller)) setActiveId(lastId);
+      if (!lockRef.current && isAtBottom(scroller)) setActiveId(lastId);
+    };
+    // A genuine user scroll gesture releases the click selection so tracking
+    // resumes. The anchor-jump's own `scroll` events are NOT one of these, so
+    // they never release the lock.
+    const releaseLock = () => {
+      lockRef.current = null;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (SCROLL_KEYS.has(e.key)) releaseLock();
     };
     const scrollTarget: Window | HTMLElement = scroller;
     scrollTarget.addEventListener("scroll", onScroll, { passive: true });
+    scrollTarget.addEventListener("wheel", releaseLock, { passive: true });
+    window.addEventListener("touchmove", releaseLock, { passive: true });
+    window.addEventListener("keydown", onKey);
 
     setActiveId((prev) => prev ?? elements[0]!.id);
     return () => {
       observer.disconnect();
       scrollTarget.removeEventListener("scroll", onScroll);
+      scrollTarget.removeEventListener("wheel", releaseLock);
+      window.removeEventListener("touchmove", releaseLock);
+      window.removeEventListener("keydown", onKey);
     };
   }, [ready]);
 
-  return activeId;
+  return { activeId, onSelect };
 }
 
 export function OnboardingTourView() {
@@ -119,7 +166,7 @@ export function OnboardingTourView() {
   const repoNotFound = useRepoNotFound(repoId);
   const { data: tour, isLoading, isError, error, refetch } = useOnboardingTour(repoId);
   const regenerate = useRegenerateTour(repoId);
-  const activeId = useActiveSectionId(!isLoading && !isError && !!tour);
+  const { activeId, onSelect } = useActiveSectionId(!isLoading && !isError && !!tour);
 
   const repoFullName = activeRepo?.full_name;
   const defaultBranch = activeRepo?.default_branch;
@@ -153,7 +200,7 @@ export function OnboardingTourView() {
         </div>
       ) : !tour ? null : (
         <div style={s.layout}>
-          <OnThisPageNav activeId={activeId} />
+          <OnThisPageNav activeId={activeId} onSelect={onSelect} />
           <main style={s.main}>
             <TourHeader
               repoId={repoId}
