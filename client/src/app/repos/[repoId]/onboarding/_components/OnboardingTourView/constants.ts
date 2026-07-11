@@ -24,3 +24,8 @@ export const SKELETON_SECTION_COUNT = 3;
 
 /** How long the "Copied" / "Link copied" confirmation stays visible. */
 export const COPY_FEEDBACK_MS = 1500;
+
+/** Px slack for treating the scroll container as "at the bottom" — used so the
+ *  last "On this page" section (which can't reach the top active-band) still
+ *  highlights once you've scrolled all the way down. */
+export const SCROLL_BOTTOM_THRESHOLD_PX = 8;
