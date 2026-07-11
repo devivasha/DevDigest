@@ -120,3 +120,19 @@ export const PrBrief = z.object({
   history: PrHistory,
 });
 export type PrBrief = z.infer<typeof PrBrief>;
+
+// ---- Why+Risk Brief (narrative, single LLM call) ----
+export const ReviewFocusItem = z.object({ path: z.string(), reason: z.string() });
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+export const Brief = z.object({
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskSeverity, // reuse existing enum
+  risks: z.array(Risk), // reuse existing Risk
+  review_focus: z.array(ReviewFocusItem),
+});
+export type Brief = z.infer<typeof Brief>;
+
+export const BriefRecord = Brief.extend({ pr_id: z.string() });
+export type BriefRecord = z.infer<typeof BriefRecord>;

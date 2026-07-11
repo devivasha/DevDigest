@@ -6,6 +6,7 @@ import { SectionLabel } from "@devdigest/ui";
 import { s } from "./styles";
 import { IntentCard } from "./IntentCard";
 import { BlastRadiusCard } from "./BlastRadiusCard";
+import { PrBriefCard } from "./PrBriefCard";
 
 interface OverviewTabProps {
   prBody: string | null | undefined;
@@ -32,6 +33,9 @@ export function OverviewTab({ prBody, prId, repoFullName, headSha }: OverviewTab
           </div>
           <div style={{ flex: "1 1 360px", minWidth: 0 }}>
             <BlastRadiusCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
+          </div>
+          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
+            <PrBriefCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
           </div>
         </div>
       )}

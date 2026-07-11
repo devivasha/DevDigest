@@ -1,4 +1,4 @@
-import type { SmartDiffRole } from '@devdigest/shared';
+import type { SmartDiff, SmartDiffFile, SmartDiffRole } from '@devdigest/shared';
 
 export const LARGE_PR_THRESHOLD = 500;
 export const LARGE_FILE_THRESHOLD = 200;
@@ -82,4 +82,50 @@ export function classifyFile(path: string): SmartDiffRole {
   if (BOILERPLATE_PATTERNS.some((p) => p.test(path))) return 'boilerplate';
   if (WIRING_PATTERNS.some((p) => p.test(path))) return 'wiring';
   return 'core';
+}
+
+/**
+ * Buckets already-enriched SmartDiffFile rows into core/wiring/boilerplate
+ * groups and derives the "too big" split suggestion — pure, no I/O. Callers
+ * (e.g. GET /pulls/:id/smart-diff, the Why+Risk Brief service) build the
+ * SmartDiffFile[] (dedup-by-path, finding_lines, pseudocode_summary) and pass
+ * it in here. Returns an empty-`groups` SmartDiff (never throws) when `files`
+ * is empty — e.g. a title-only PR with no changed files.
+ */
+export function groupSmartDiff(files: SmartDiffFile[]): SmartDiff {
+  const buckets = new Map<SmartDiffRole, SmartDiffFile[]>([
+    ['core', []],
+    ['wiring', []],
+    ['boilerplate', []],
+  ]);
+  let totalLines = 0;
+  for (const f of files) {
+    const role = classifyFile(f.path);
+    buckets.get(role)!.push(f);
+    totalLines += f.additions + f.deletions;
+  }
+
+  const boilerplatePaths = (buckets.get('boilerplate') ?? []).map((f) => f.path);
+  const corePaths = [
+    ...(buckets.get('core') ?? []),
+    ...(buckets.get('wiring') ?? []),
+  ].map((f) => f.path);
+  const proposed_splits =
+    totalLines > LARGE_PR_THRESHOLD && boilerplatePaths.length > 0
+      ? [
+          { name: 'Logic changes', files: corePaths },
+          { name: 'Lockfile / generated', files: boilerplatePaths },
+        ]
+      : [];
+
+  return {
+    groups: (['core', 'wiring', 'boilerplate'] as SmartDiffRole[])
+      .map((role) => ({ role, files: buckets.get(role)! }))
+      .filter((g) => g.files.length > 0),
+    split_suggestion: {
+      too_big: totalLines > LARGE_PR_THRESHOLD,
+      total_lines: totalLines,
+      proposed_splits,
+    },
+  };
 }

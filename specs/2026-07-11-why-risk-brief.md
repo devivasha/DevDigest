@@ -94,7 +94,9 @@ lives in top-level `specs/`.
   the reused pieces — intent, blast **summary** (deterministic one-liner + impacted endpoints +
   changed symbols), smart-diff **group stats** (core/wiring/boilerplate additions/deletions per
   group), the linked issue, and attached project-context specs — and **shall not** include any
-  change bodies or raw diff hunk lines.
+  change bodies or raw diff hunk lines. _(Note: attached specs are **DEFERRED in v1** — no per-repo
+  agent-scoping mechanism exists to select them without noise; the specs piece is omitted and the
+  Brief is best-effort per AC-18. See the DEFERRED item in Open questions.)_
   _(observable: the assembled prompt input contains the intent/blast-summary/group-stats/issue/spec
    text but contains no added/removed code lines from the diff)_
 - AC-2: WHEN a Brief is generated or regenerated, the system **shall** make **exactly ONE**
@@ -126,10 +128,14 @@ lives in top-level `specs/`.
   _(observable: each `review_focus` item carries a path that exists in the repo clone/index and a non-empty reason)_
 - AC-8: WHEN the model emits any file path in a risk `file_ref` or a `review_focus` item, the
   system **shall** verify the path exists in the repo clone/index and **shall** drop or de-link
-  any path it cannot verify, so no fabricated path is rendered as a clickable link. (This is
-  **path-existence** grounding only; the `groundFindings()` line-grounding gate is deliberately
-  not applied — summary-level, like intent/onboarding.)
-  _(observable: a Brief citing a non-existent path renders that path dropped / non-navigating)_
+  any path it cannot verify, so no fabricated path is rendered as a clickable link. **In addition,
+  an emitted file path shall be kept only if it is a member of this PR's blast/change map** (the
+  changed files + blast changed-symbol files + downstream caller files) — a real-but-off-map repo
+  file is dropped too, so risks/review-focus can only cite files actually in the blast radius.
+  (This is **path-existence + blast-membership** grounding only; the `groundFindings()`
+  line-grounding gate is deliberately not applied — summary-level, like intent/onboarding.)
+  _(observable: a Brief citing a non-existent OR off-blast-map path renders that path dropped /
+   non-navigating; a changed-file / blast-symbol / caller-file path renders as a link)_
 
 ### Cache, compute & regenerate
 
@@ -381,3 +387,12 @@ where relevant. One tunable assumption (content caps) remains open for the plann
   **not** gated behind an explicit Generate button.
 - [ASSUMPTION — Content caps: `risks[]` ≤ 7, `review_focus[]` ≤ 7, `what`/`why` ≤ ~600 chars are
   sensible defaults; the planner/product may tune the numbers.]
+- [DEFERRED (v1 shipped) — Attached project-context specs are **not** wired as a Brief input in v1.
+  AC-1 lists attached specs among the reused inputs, but the codebase has **no per-repo agent
+  scoping** (`agents` rows carry only `workspace_id`, no `repo_id`), so there is no non-noisy way to
+  select repo-relevant specs. Per the cross-model review, feeding the union of all workspace docs was
+  rejected as quality-degrading. The shipped `BriefService.gatherSpecTexts` therefore returns `[]`
+  and the specs section is omitted from the prompt — which is consistent with **AC-18** (best-effort
+  from available signals). Wiring specs in properly (a per-repo scoping mechanism, then repo-scoped
+  gathering capped ≤3 docs/~8KB) is recorded as **future work**. See
+  `docs/plans/why-risk-brief.cross-model-review.md`.]
