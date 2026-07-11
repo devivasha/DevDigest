@@ -258,7 +258,7 @@ export function BlastRadiusCard({ prId, repoFullName, headSha }: BlastRadiusCard
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {symbolsWithCallers.map((sym) => (
             <SymbolRow
-              key={sym.name}
+              key={`${sym.file}:${sym.kind}:${sym.name}`}
               name={sym.name}
               kind={sym.kind}
               impact={downstreamBySymbol.get(sym.name)}
