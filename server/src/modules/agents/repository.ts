@@ -145,6 +145,27 @@ export class AgentsRepository {
     return row;
   }
 
+  /**
+   * Set the agent's ordered list of attached document paths (repo-relative,
+   * order IS attach order — never sort/dedupe). Persists paths only, never
+   * document text. Deliberately updates ONLY `attachedDocPaths` — does NOT
+   * bump `version` and does NOT snapshot `agent_versions`, because
+   * attach/detach/reorder is mutable config, not a versioned config change.
+   * Returns undefined if no such agent exists in the workspace.
+   */
+  async setAttachedDocs(
+    workspaceId: string,
+    id: string,
+    paths: string[],
+  ): Promise<AgentRow | undefined> {
+    const [row] = await this.db
+      .update(t.agents)
+      .set({ attachedDocPaths: paths })
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.id, id)))
+      .returning();
+    return row;
+  }
+
   private async snapshotVersion(row: AgentRow, version: number): Promise<void> {
     const skills = await this.skillIdsForAgent(row.id);
     await this.db

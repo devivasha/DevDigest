@@ -22,10 +22,19 @@ export function toAgentDto(row: AgentRow): Agent {
     strategy: row.strategy as ReviewStrategy,
     ci_fail_on: row.ciFailOn as CiFailOn,
     repo_intel: row.repoIntel,
+    attached_doc_paths: row.attachedDocPaths,
   };
 }
 
-/** Fields whose change bumps the agent's config version (anything but `enabled`). */
+/**
+ * Fields whose change bumps the agent's config version (anything but `enabled`).
+ *
+ * `attachedDocPaths` is deliberately NOT a member of this patch — attaching,
+ * detaching, or reordering attached docs is mutable config that must never
+ * bump `version` or snapshot `agent_versions` (see `setAttachedDocs` in
+ * repository.ts, which writes that column through a dedicated path that never
+ * touches `version` at all — this exclusion here is belt-and-braces).
+ */
 export interface ConfigChangePatch {
   name?: string;
   description?: string;
@@ -41,6 +50,7 @@ export interface ConfigChangePatch {
 /**
  * True when a patch changes config (vs. just toggling `enabled`) relative to the
  * existing row — a config change bumps the version and snapshots agent_versions.
+ * NOTE: `attachedDocPaths` is intentionally excluded — see `ConfigChangePatch` doc.
  */
 export function isConfigChange(
   existing: Pick<

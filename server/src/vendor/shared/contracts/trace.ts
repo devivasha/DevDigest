@@ -84,6 +84,11 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  // Attached Project Context doc paths that were skipped (missing/unreadable/
+  // guard-refused/clone-absent) at run time — distinct from `specs_read`.
+  // Defaulted so pre-existing persisted (JSONB) traces without this field
+  // still parse.
+  specs_missing: z.array(z.string()).default([]),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

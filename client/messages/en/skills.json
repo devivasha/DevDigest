@@ -97,5 +97,29 @@
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
     "version": "v{version}"
+  },
+  "context": {
+    "tabLabel": "Context",
+    "title": "Project context",
+    "attachedCount": "{count} attached",
+    "inheritanceNote": "Any agent using this skill inherits these documents.",
+    "repoLabel": "Repository",
+    "searchPlaceholder": "Search documents…",
+    "noMatch": "No documents match.",
+    "noRepos": "No repositories available to discover documents from.",
+    "loadError": "Could not load project context documents.",
+    "toggleLabel": "Attach {filename}",
+    "previewLabel": "Preview {filename}",
+    "previewLoadError": "Could not load this document.",
+    "previewTokens": "{tokens} tokens",
+    "previewUsedBy": "Used by {count} agents",
+    "detachLabel": "Detach {filename}",
+    "bucket": {
+      "specs": "specs",
+      "docs": "docs",
+      "insights": "insights"
+    },
+    "serializesAsTitle": "Serializes as",
+    "serializesAsEmpty": "No documents attached — nothing is injected."
   }
 }

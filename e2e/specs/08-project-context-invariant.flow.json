@@ -1,0 +1,23 @@
+{
+  "name": "Attached architecture spec is read and injected into the Project-context prompt slot (AC-35, e2e half)",
+  "description": "The Security Reviewer has the architectural-invariant spec 'specs/architecture.md' attached (seeded on the agent's attached_doc_paths) and PR #501 has a seeded, completed Security Reviewer run whose trace shows the spec was read and injected. From PR #501, open the Agent runs tab, open the seeded run's trace drawer, and confirm the spec path appears in the trace's 'Specs read' row and the assembled '## Project context' prompt block (labelled 'Project context — attached specs (untrusted)') contains the invariant text. Per risk R-8 (docs/plans/project-context.md), agent-browser is deterministic with no LLM, so this flow asserts injection visibility only — it does NOT assert on any LLM-generated finding text. The companion assertion that a grounded finding survives groundFindings() lives in the hermetic server test server/src/modules/reviews/project-context-injection.test.ts (T16) via MockLLMProvider. Read-only seeded data (no model call). Run locally via the hermetic stack (see e2e/README.md).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["wait", "--text", "Query the users table directly from the public API handler"], "label": "seeded violating PR title row is visible" },
+    { "cmd": ["find", "text", "Query the users table directly from the public API handler", "click"], "label": "open the PR row" },
+    { "cmd": ["wait", "--url", "/pulls/501"], "label": "navigate to the PR detail route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Agent runs"], "label": "switch to the Agent runs tab" },
+    { "cmd": ["wait", "--url", "tab=findings"], "label": "findings tab is active in the URL" },
+    { "cmd": ["wait", "--text", "TIMELINE"], "label": "the PR's run timeline section renders (the seeded Security Reviewer run); rendered upper-case via CSS text-transform on SectionLabel, so the assertion matches the rendered case, not the raw 'Timeline' prop" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Open run trace & logs"], "label": "open the run trace drawer for the seeded run (icon-only button, accessible via its aria-label)" },
+    { "cmd": ["wait", "--url", "trace="], "label": "trace drawer param is set in the URL" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "trace fetch settles" },
+    { "cmd": ["wait", "--text", "specs/architecture.md"], "label": "the attached spec path appears in the trace's Specs read row" },
+    { "cmd": ["scrollintoview", "text=Prompt assembly"], "label": "scroll the (below-the-fold) Prompt assembly section into view inside the drawer" },
+    { "cmd": ["find", "text", "Prompt assembly", "click"], "label": "expand the Prompt assembly trace section" },
+    { "cmd": ["find", "text", "Project context — attached specs (untrusted)", "click"], "label": "expand the Project-context prompt block" },
+    { "cmd": ["wait", "--text", "must not import"], "label": "the assembled Project-context block contains the invariant text (backtick-free substring of 'Module `api/` must not import `db/` directly' — agent-browser's --text matcher mishandles literal backticks, so we assert on the backtick-free crux of the invariant, which is equally diagnostic that the spec was injected)" }
+  ]
+}

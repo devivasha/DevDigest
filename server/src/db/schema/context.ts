@@ -4,8 +4,6 @@ import {
   text,
   integer,
   boolean,
-  jsonb,
-  timestamp,
   vector,
   index,
   uniqueIndex,
@@ -116,11 +114,3 @@ export const references = pgTable(
     byFile: index('references_repo_from_idx').on(t.repoId, t.fromPath),
   }),
 );
-
-export const onboarding = pgTable('onboarding', {
-  repoId: uuid('repo_id')
-    .primaryKey()
-    .references(() => repos.id, { onDelete: 'cascade' }),
-  json: jsonb('json').notNull(),
-  generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
-});

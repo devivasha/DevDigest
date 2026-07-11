@@ -6,7 +6,10 @@
  *  - contracts/brief      Intent, BlastRadius, Risks, PrHistory, SmartDiff, PrBrief
  *  - contracts/knowledge  Conformance, Onboarding, EvalRun/EvalCase, MemoryItem,
  *                         Skill/CommunitySkill, ConventionCandidate, Agent
+ *  - contracts/onboarding OnboardingTour, OnboardingSectionsSchema, DegradedReason
  *  - contracts/trace      RunTrace, RunEvent, RunLogLine (single-document trace)
+ *  - contracts/project-context  DiscoveredDocument, DiscoverySummary, DocumentContent,
+ *                         SetAttachedDocsBody, SaveDocumentBody
  *  - contracts/platform   Settings, ConnTestResult, Repo, PrMeta/PrDetail, SpecFile, …
  *  - adapters             adapter interfaces + ModelInfo
  *
@@ -19,7 +22,9 @@ export * from './contracts/review-api.js';
 export * from './contracts/brief.js';
 export * from './contracts/blast.js';
 export * from './contracts/knowledge.js';
+export * from './contracts/onboarding.js';
 export * from './contracts/trace.js';
+export * from './contracts/project-context.js';
 export * from './contracts/platform.js';
 export * from './contracts/why.js';
 export * from './contracts/eval-ci.js';

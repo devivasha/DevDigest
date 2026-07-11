@@ -32,6 +32,9 @@ export const agents = pgTable('agents', {
   enabled: boolean('enabled').notNull().default(true),
   version: integer('version').notNull().default(1),
   createdBy: uuid('created_by').references(() => users.id),
+  // Ordered list of repo-relative markdown doc paths attached to this agent.
+  // Only paths are persisted — never document text (T2 of project-context plan).
+  attachedDocPaths: jsonb('attached_doc_paths').$type<string[]>().notNull().default([]),
   createdAt: now(),
 });
 

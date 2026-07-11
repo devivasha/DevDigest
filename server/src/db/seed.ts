@@ -3,6 +3,7 @@ import { createDb, type Db } from "./client.js";
 import * as t from "./schema.js";
 import { eq, and } from "drizzle-orm";
 import { INDEXER_VERSION } from "../modules/repo-intel/constants.js";
+import type { RunTrace } from "@devdigest/shared";
 
 /**
  * Seed the starter's demo data. Idempotent: re-running upserts the default
@@ -373,6 +374,191 @@ export async function seed(
         and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)),
       );
     if (!existing) await db.insert(t.agents).values(a);
+  }
+
+  // ---- AC-35 headline scenario fixture (T17 e2e flow) ----------------------
+  // Attach an architectural-invariant spec to the Security Reviewer and seed a
+  // completed run whose trace shows the spec was read and injected into the
+  // "## Project context" prompt slot. Seeded directly (no live LLM call): e2e
+  // (agent-browser) is fully deterministic and has no LLM, so a real review
+  // run isn't reproducible there — see docs/plans/project-context.md risk R-8.
+  // The companion assertion that a grounded finding survives `groundFindings()`
+  // lives in the hermetic server test
+  // `server/src/modules/reviews/project-context-injection.test.ts` (T16),
+  // using `MockLLMProvider` — not duplicated here.
+  {
+    const ARCHITECTURE_SPEC_PATH = "specs/architecture.md";
+    const ARCHITECTURE_SPEC_TEXT =
+      "# Architecture Invariants\n\n" +
+      "- Module `api/` must not import `db/` directly. All database access from " +
+      "the API layer must go through the `services/` layer.\n";
+
+    // Attach the spec to the Security Reviewer (ordered PATHS only, never text
+    // — AC-9). This is what the run-time union/injection resolver
+    // (`resolveSpecPaths`, run-executor.ts) reads at run start.
+    const [securityAgent] = await db
+      .select()
+      .from(t.agents)
+      .where(
+        and(
+          eq(t.agents.workspaceId, workspaceId),
+          eq(t.agents.name, "Security Reviewer"),
+        ),
+      );
+
+    if (securityAgent) {
+      await db
+        .update(t.agents)
+        .set({ attachedDocPaths: [ARCHITECTURE_SPEC_PATH] })
+        .where(eq(t.agents.id, securityAgent.id));
+
+      let [violatingPr] = await db
+        .select()
+        .from(t.pullRequests)
+        .where(
+          and(eq(t.pullRequests.repoId, repoId), eq(t.pullRequests.number, 501)),
+        );
+
+      if (!violatingPr) {
+        [violatingPr] = await db
+          .insert(t.pullRequests)
+          .values({
+            workspaceId,
+            repoId,
+            number: 501,
+            title: "Query the users table directly from the public API handler",
+            author: "priya.natarajan",
+            branch: "feat/direct-db-lookup",
+            base: "main",
+            headSha: "f9e8d7c6b5a4",
+            additions: 18,
+            deletions: 2,
+            filesCount: 1,
+            status: "needs_review",
+            body: "Skip the extra service hop and query Postgres straight from the handler for speed.",
+          })
+          .returning();
+
+        await db.insert(t.prFiles).values({
+          prId: violatingPr!.id,
+          path: "src/api/public/users.ts",
+          additions: 18,
+          deletions: 2,
+        });
+
+        // Completed Security Reviewer run + its single-document trace. Mirrors
+        // exactly what run-executor.ts (T10) + reviewer-core's assemblePrompt
+        // produce for one attached spec: `specs_read` carries the read path
+        // and `prompt_assembly.specs` carries the untrusted-wrapped doc text
+        // (reviewer-core wraps with `wrapUntrusted('spec-0', text)` — see
+        // reviewer-core/src/prompt.ts — no reviewer-core change needed here).
+        const [run] = await db
+          .insert(t.agentRuns)
+          .values({
+            workspaceId,
+            agentId: securityAgent.id,
+            prId: violatingPr!.id,
+            provider: "openai",
+            model: "gpt-4.1",
+            durationMs: 4200,
+            tokensIn: 1800,
+            tokensOut: 240,
+            costUsd: 0.021,
+            status: "done",
+            source: "local",
+            findingsCount: 1,
+            grounding: "1/1 passed",
+            score: 42,
+            blockers: 1,
+          })
+          .returning();
+
+        const specsBlock = `<untrusted source="spec-0">\n${ARCHITECTURE_SPEC_TEXT}\n</untrusted>`;
+        const diffBlock =
+          '<untrusted source="diff">\n' +
+          "--- a/src/api/public/users.ts\n" +
+          "+++ b/src/api/public/users.ts\n" +
+          "@@ -1,3 +1,19 @@\n" +
+          '+import { db } from "../../db/client";\n' +
+          "+\n" +
+          " export async function getUser(req, res) {\n" +
+          "-  return service.findUser(req.params.id);\n" +
+          '+  const row = await db.query("select * from users where id = $1", [req.params.id]);\n' +
+          "+  return row;\n" +
+          " }\n" +
+          "</untrusted>";
+
+        const trace: RunTrace = {
+          config: {
+            agent: "Security Reviewer",
+            version: "1",
+            provider: "openai",
+            model: "gpt-4.1",
+            pr: 501,
+            source: "local",
+          },
+          stats: {
+            duration_ms: 4200,
+            tokens_in: 1800,
+            tokens_out: 240,
+            cost_usd: 0.021,
+            findings: 1,
+            grounding: "1/1 passed",
+          },
+          prompt_assembly: {
+            system:
+              "You are a security-focused PR reviewer. Examine the diff for hardcoded secrets, injection, SSRF, and untrusted input reaching a dangerous sink. Return at most 5 findings ranked by severity. Cite exact file:line.",
+            skills: null,
+            memory: null,
+            specs: specsBlock,
+            callers: null,
+            repo_map: null,
+            pr_description:
+              "Skip the extra service hop and query Postgres straight from the handler for speed.",
+            user: `Review PR #501 'Query the users table directly from the public API handler'\n\n## Project context\n${specsBlock}\n\n## Diff to review\n${diffBlock}`,
+          },
+          tool_calls: [],
+          raw_output:
+            "Direct database import in src/api/public/users.ts bypasses the services/ layer, violating the architecture invariant that api/ must not import db/ directly.",
+          memory_pulled: [],
+          specs_read: [ARCHITECTURE_SPEC_PATH],
+          specs_missing: [],
+          log: [],
+        };
+
+        await db.insert(t.runTraces).values({ runId: run!.id, trace });
+
+        const [violatingReview] = await db
+          .insert(t.reviews)
+          .values({
+            workspaceId,
+            prId: violatingPr!.id,
+            agentId: securityAgent.id,
+            runId: run!.id,
+            kind: "review",
+            verdict: "request_changes",
+            summary:
+              "Direct `db` import from the `api/` layer violates the attached architecture invariant (specs/architecture.md); route through services/ instead.",
+            score: 42,
+            model: "gpt-4.1",
+          })
+          .returning();
+
+        await db.insert(t.findings).values({
+          reviewId: violatingReview!.id,
+          file: "src/api/public/users.ts",
+          startLine: 4,
+          endLine: 7,
+          severity: "CRITICAL",
+          category: "architecture",
+          title: "Direct database import in api/ layer violates architecture invariant",
+          rationale:
+            "`specs/architecture.md` states module `api/` must not import `db/` directly; this handler imports `db` and queries it inline, bypassing the services/ layer.",
+          suggestion: "Move the query into services/ and call that from the handler instead.",
+          confidence: 0.93,
+        });
+      }
+    }
   }
 
   // ---- skills (6 reusable instruction blocks) ----

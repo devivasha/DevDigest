@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 # Development Plan: Local stdio MCP Server (`mcp-server/`)
 
 ## Overview

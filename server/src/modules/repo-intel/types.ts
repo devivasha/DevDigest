@@ -121,6 +121,44 @@ export interface FileRankRow {
   percentile: number;
 }
 
+// ---------------------------------------------------------------------------
+// Onboarding facade extensions (T3 of onboarding-generator plan). Additive
+// only — no existing method signature above is changed.
+// ---------------------------------------------------------------------------
+
+/** Full `file_rank` row for a path — used by the onboarding critical/reading
+ * scoring, which needs the raw `rank`/`pagerank`/`hotness` values, not just
+ * the percentile bucket `FileRankRow` exposes. */
+export interface FileRankDetail {
+  path: string;
+  /** Stored `file_rank.rank` column. `hotness` is hardwired to 0 today, so
+   * `rank === pagerank` for now — this is a READ of the stored column, never
+   * a recomputation. */
+  rank: number;
+  pagerank: number;
+  hotness: number;
+  percentile: number;
+}
+
+export interface StackFacts {
+  languages: string[];
+  frameworks: string[];
+  packageManager?: string;
+  degraded?: boolean;
+  reason?: DegradedReason;
+}
+
+export interface SetupCommand {
+  command: string;
+  note?: string;
+}
+
+export interface SetupCommandsResult {
+  commands: SetupCommand[];
+  degraded?: boolean;
+  reason?: DegradedReason;
+}
+
 export interface RepoMapResult {
   text: string;
   tokens: number;
@@ -169,4 +207,25 @@ export interface RepoIntel {
     opts?: { exclude?: string[] },
   ): Promise<string[]>;
   getCriticalPaths(repoId: string): Promise<string[][]>;
+
+  // --- Onboarding facade extensions (onboarding-generator T3) --------------
+  /** Top-N files by rank DESC (reuses `file_rank_repo_rank_idx`), with the
+   * full rank/pagerank/hotness/percentile detail. Same junk-path + exclude
+   * filtering as `getTopFilesByRank`. */
+  getTopFilesByRankDetailed(
+    repoId: string,
+    n: number,
+    opts?: { exclude?: string[] },
+  ): Promise<FileRankDetail[]>;
+  /** Importer (caller) count per given file path, via `file_edges` fan-in. */
+  getFileImporterCounts(repoId: string, paths: string[]): Promise<Record<string, number>>;
+  /** Repo-wide "METHOD /path" inventory, aggregated across ALL indexed files'
+   * `file_facts.endpoints` — intentionally outside the top-N framing. */
+  getRouteInventory(repoId: string, limit?: number): Promise<string[]>;
+  /** Languages/frameworks/package-manager detected from the clone's
+   * `package.json` + lockfile. Missing clone → empty + `degraded: true`. */
+  getStackFacts(repoId: string): Promise<StackFacts>;
+  /** Ordered install/build/dev commands from `package.json` scripts +
+   * docker-compose presence. Missing clone → empty + `degraded: true`. */
+  getSetupCommands(repoId: string): Promise<SetupCommandsResult>;
 }

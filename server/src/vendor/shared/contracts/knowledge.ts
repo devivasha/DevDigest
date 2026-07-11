@@ -146,6 +146,12 @@ export const Skill = z.object({
   version: z.number(),
   evidence_files: z.array(z.string()).nullable(),
   threat_level: SkillThreatLevel.optional(),
+  // Ordered repo-relative paths of attached Project Context docs
+  // (specs/docs/insights markdown). Distinct from `evidence_files` — paths
+  // only, read fresh at run time, never persisted as text. Attach/detach/
+  // reorder is mutable config and must NOT bump `version` (see
+  // `skills/repository.ts` `setAttachedDocs`).
+  attached_doc_paths: z.array(z.string()).default([]),
 });
 export type Skill = z.infer<typeof Skill>;
 
@@ -207,6 +213,12 @@ export const Agent = z.object({
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
   skill_count: z.number().int().optional(),
+  // Ordered repo-relative paths of attached Project Context docs
+  // (specs/docs/insights markdown). Order IS attach order and drives
+  // run-time injection order (`modules/project-context/injection.ts`).
+  // Attach/detach/reorder is mutable config and must NOT bump `version`
+  // (see `agents/repository.ts` `setAttachedDocs` / `isConfigChange`).
+  attached_doc_paths: z.array(z.string()).default([]),
 });
 export type Agent = z.infer<typeof Agent>;
 
