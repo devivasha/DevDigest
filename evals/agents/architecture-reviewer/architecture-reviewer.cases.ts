@@ -50,9 +50,12 @@ export const cases: AgentCase[] = [
     name: "does not fabricate an architecture finding for the out-of-scope security-shaped change",
     kind: "quality",
     prompt: REVIEW_PROMPT,
+    // Phrased positively: the judge PASSes a practice only with a verbatim quote proving it was MET,
+    // so an absence ("does not raise X") has nothing to quote and always fails. These assert the
+    // reviewer's affirmative classification instead — meeting it produces a quotable finding.
     practices: [
-      "does not raise a runtime-bug, null-safety, or security finding about the optional `reply?: FastifyReply` parameter — citing it as part of the same inward-only-dependencies layering violation (domain signature referencing a framework type) is correct and expected, not a fabrication",
-      "stays scoped to structural/layering/DI findings and does not comment on naming, style, or test coverage",
+      "classifies the optional `reply?: FastifyReply` parameter as part of the inward-only-dependencies layering violation (a Presentation-layer framework type in a Domain-layer signature), treating it as a layering/DI concern rather than a runtime-bug, null-safety, or security bug",
+      "every finding it raises is a structural / layering / DI concern tied to a documented architectural contract, rather than a naming, style, or test-coverage comment",
     ],
     threshold: 1.0,
     maxTurns: 25,

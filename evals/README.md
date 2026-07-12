@@ -195,19 +195,20 @@ driven by [`scripts/ci-detect.mjs`](scripts/ci-detect.mjs), which maps changed f
 | Changed | Job | Model (default) | Proxy | Gates merge |
 |---|---|---|---|---|
 | `.claude/skills/<name>/**` | `skills` — one matrix job per skill | `deepseek/deepseek-chat` (native) | no | ✅ |
-| `.claude/agents/<name>.md` | `agents` — one matrix job per agent | `deepseek/deepseek-chat` | yes | ✅ |
+| `.claude/agents/<name>.md` | `agents` — one matrix job per agent | `google/gemini-2.5-flash` | yes | ✅ |
 | `CLAUDE.md` / any agent / `evals/src/**` | `workflow` — the live harness tier | `google/gemini-2.5-flash` | yes | ⚠️ advisory |
 
 **Skip, don't fail.** A changed skill/agent with **no written evals** is not a failure: `ci-detect`
 reports it on `skipped_skills` / `skipped_agents`, and the `detect` job prints a visible
 `⏭️ SKIP <name> (no evals)` line to the run summary. Only artifacts that *have* evals get a job.
 
-**Why the models split.** The content tier (`skills`) talks to OpenRouter natively (no proxy) so
-DeepSeek is cheapest-and-fine. The tool tiers go through the Agent SDK → LiteLLM proxy; `agents`
-only needs tool *use* (DeepSeek is enough), but `workflow` needs a model that really **dispatches** a
-subagent, so it defaults to Gemini 2.5 Flash (see the verified table above). All three are
-`workflow_dispatch` inputs — override the model for a one-off run from the "Run workflow" button, no
-code change.
+**Why the models split.** The content tier (`skills`) talks to OpenRouter natively (no proxy) and
+grades prose, so DeepSeek is cheapest-and-fine. Both tool tiers go through the Agent SDK → LiteLLM
+proxy and default to **Gemini 2.5 Flash**: `agents` grades the structured review report (per-finding
+severity, verbatim evidence, a PASS/FAIL gate) and `workflow` additionally needs a model that really
+**dispatches** a subagent — cheaper non-Gemini models (DeepSeek) emit prose findings and miss the
+format, failing legitimately (see the verified table above). All three are `workflow_dispatch`
+inputs — override the model for a one-off run from the "Run workflow" button, no code change.
 
 **Per-artifact matrix + trailing-slash filter.** Each job runs `vitest run "skills/<name>/"` /
 `"agents/<name>/"` — the **trailing slash is load-bearing**: vitest matches the filter as a path

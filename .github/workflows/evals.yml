@@ -34,8 +34,8 @@ on:
         description: 'Model for the content tier (skills + judge)'
         default: 'deepseek/deepseek-chat'
       agents_model:
-        description: 'Model for the agents tool tier'
-        default: 'deepseek/deepseek-chat'
+        description: 'Model for the agents tool tier (needs the structured-report format)'
+        default: 'google/gemini-2.5-flash'
       workflow_model:
         description: 'Model for the workflow tool tier (needs real subagent dispatch)'
         default: 'google/gemini-2.5-flash'
@@ -149,8 +149,10 @@ jobs:
         working-directory: evals
     env:
       OPENROUTER_BASE_URL: http://localhost:4000
-      EVAL_MODEL: ${{ github.event.inputs.agents_model || 'deepseek/deepseek-chat' }}
-      EVAL_JUDGE_MODEL: ${{ github.event.inputs.agents_model || 'deepseek/deepseek-chat' }}
+      # Gemini, not DeepSeek: the agent evals grade the structured report (per-finding severity,
+      # verbatim evidence, PASS/FAIL gate) that cheap non-Gemini models don't reliably emit.
+      EVAL_MODEL: ${{ github.event.inputs.agents_model || 'google/gemini-2.5-flash' }}
+      EVAL_JUDGE_MODEL: ${{ github.event.inputs.agents_model || 'google/gemini-2.5-flash' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
