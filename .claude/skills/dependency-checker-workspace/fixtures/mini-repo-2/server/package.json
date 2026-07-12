@@ -1,0 +1,17 @@
+{
+  "name": "@devdigest/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "drizzle-orm": "^0.30.10",
+    "zod": "^4.0.5",
+    "date-fns": "^3.6.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.5",
+    "typescript": "^5.5.4"
+  }
+}

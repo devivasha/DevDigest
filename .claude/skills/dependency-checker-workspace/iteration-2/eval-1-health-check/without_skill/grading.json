@@ -1,0 +1,49 @@
+{
+  "eval_id": 1,
+  "run": "without_skill",
+  "report_found": true,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 7,
+    "failed": 0,
+    "total": 7
+  },
+  "score": "7/7",
+  "expectations": [
+    {
+      "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+      "passed": true,
+      "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+    },
+    {
+      "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+      "passed": true,
+      "evidence": "vitest + v1 marker + drift/^2"
+    },
+    {
+      "text": "Does NOT falsely flag tailwindcss as unused",
+      "passed": true,
+      "evidence": "tailwind not flagged unused"
+    },
+    {
+      "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+      "passed": true,
+      "evidence": "date-fns + dayjs + duplicate/overlap"
+    },
+    {
+      "text": "Detects uuid as unused in server",
+      "passed": true,
+      "evidence": "uuid near unused/remove"
+    },
+    {
+      "text": "Output contains a Mermaid dependency graph",
+      "passed": true,
+      "evidence": "```mermaid + flowchart/graph"
+    },
+    {
+      "text": "Findings carry explicit severity tiers",
+      "passed": true,
+      "evidence": "P0/P1/P2 or High/Med/Low"
+    }
+  ]
+}

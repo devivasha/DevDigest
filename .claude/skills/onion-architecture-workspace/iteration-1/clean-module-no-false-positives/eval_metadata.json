@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "eval_name": "clean-module-no-false-positives",
+  "prompt": "I just finished a new `webhooks` module for the DevDigest backend (server/src/modules/webhooks/). Before I open a PR, can you review these four files for any architecture problems? Point out anything that doesn't fit how our backend is structured, with the file and a fix. The files: routes.ts, service.ts, repository.ts, contracts-webhooks.ts.",
+  "assertions": [
+    { "id": "reports_module_as_compliant", "text": "States the module is architecturally clean / has no onion-architecture violations." },
+    { "id": "no_fabricated_layering_violation", "text": "Does NOT invent a layering/dependency/onion violation that isn't actually present (no false positives)." },
+    { "id": "optional_suggestions_not_framed_as_violations", "text": "Any suggestions are framed as optional nitpicks, not as architecture violations." }
+  ]
+}

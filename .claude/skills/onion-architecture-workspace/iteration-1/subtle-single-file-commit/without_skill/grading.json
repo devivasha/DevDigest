@@ -1,0 +1,10 @@
+{
+  "expectations": [
+    { "text": "Proactively raises an onion/layering concern despite only being asked 'anything to flag?'", "passed": true, "evidence": "Finding 2: 'Application layer talks to the DB directly (onion layering) ... infrastructure/persistence work leaking into the application layer.'" },
+    { "text": "Flags service querying container.db directly; should use a repository", "passed": true, "evidence": "Finding 2: 'It should call a UsageRepository (injected via the container) that owns the query.'" },
+    { "text": "Flags new OpenAIProvider instead of container.llm", "passed": true, "evidence": "Finding 3: 'Service news a concrete adapter instead of depending on an abstraction ... Resolve the provider off this.container.'" },
+    { "text": "Flags process.env.OPENAI_API_KEY vs injected SecretsProvider", "passed": true, "evidence": "Finding 1: 'LocalSecretsProvider is the only place allowed to touch process.env.'" },
+    { "text": "Recommends introducing a repository layer", "passed": true, "evidence": "'I'd route the query through a repository, take both the LLM provider and the API key from the container.'" }
+  ],
+  "summary": { "passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0 }
+}

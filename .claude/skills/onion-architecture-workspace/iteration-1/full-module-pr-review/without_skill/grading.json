@@ -1,0 +1,16 @@
+{
+  "expectations": [
+    { "text": "Flags service.ts direct container.db query instead of the repository", "passed": true, "evidence": "Finding 3: 'service queries the DB directly, bypassing its repository ... issuing a raw Drizzle query and importing the DB schema.'" },
+    { "text": "Flags adapter instantiated in service (new StripeClient)", "passed": true, "evidence": "Finding 1: 'the Application layer should depend on an injected adapter obtained from the container, not construct a concrete Infrastructure class.'" },
+    { "text": "Flags secret read from process.env", "passed": true, "evidence": "Finding 1: 'LocalSecretsProvider is the only place allowed to touch process.env.'" },
+    { "text": "Flags raw Drizzle row ($inferSelect) leaking out, missing toDomain", "passed": false, "evidence": "No mention of InvoiceRow/$inferSelect leaking or a missing toDomain mapper. Finding 6 only discusses Zod/TS type drift and shared-package placement, not the row-type leak." },
+    { "text": "Flags route bypassing service via new BillingRepository", "passed": true, "evidence": "Finding 2: 'Instantiating a repository (Infrastructure) directly ... Presentation should never skip the Application layer.'" },
+    { "text": "Flags business logic (dunning tier loop/if-else) in the route", "passed": true, "evidence": "Finding 2: 'Computing the amount-due total and the dunning-tier thresholds — that's domain/application logic living in a route handler.'" },
+    { "text": "Flags manual workspaceId from headers instead of getContext", "passed": false, "evidence": "Demoted to a Minor/nit: 'x-workspace-id is read and cast as string ... Consider a shared header schema / preHandler.' Never mentions getContext; not treated as an architecture violation." },
+    { "text": "Flags cross-module import of AgentsRepository in the repository", "passed": true, "evidence": "Finding 4: 'billing repo instantiates another module's repository (cross-module coupling at the wrong layer).'" },
+    { "text": "Flags missing workspaceId scope on getById", "passed": false, "evidence": "No finding about getById/markPaid missing workspaceId scoping. The cross-tenant leak is not surfaced." },
+    { "text": "Flags zod imported in the domain contracts file", "passed": false, "evidence": "Does the opposite: Finding 6 suggests deriving types via z.infer<typeof InvoiceSchema>, i.e. keeping Zod in the contract. The domain zero-import rule is not raised." },
+    { "text": "Uses DevDigest layer vocabulary (Container, vendor/shared/contracts, toDomain, getContext, rule files)", "passed": true, "evidence": "Uses onion layers, DI, secrets rule, composition root, @devdigest/shared alias — strong generic vocabulary (no rule-file citations, no toDomain/getContext)." }
+  ],
+  "summary": { "passed": 7, "failed": 4, "total": 11, "pass_rate": 0.636 }
+}

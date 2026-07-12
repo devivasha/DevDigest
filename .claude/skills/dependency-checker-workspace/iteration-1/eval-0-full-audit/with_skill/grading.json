@@ -1,0 +1,64 @@
+{
+  "eval_id": 0,
+  "run": "with_skill",
+  "report_found": true,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 10,
+    "failed": 0,
+    "total": 10
+  },
+  "score": "10/10",
+  "expectations": [
+    {
+      "text": "Output contains a Mermaid dependency graph",
+      "passed": true,
+      "evidence": "```mermaid + flowchart/graph found"
+    },
+    {
+      "text": "Findings carry explicit severity tiers",
+      "passed": true,
+      "evidence": "P0/P1/P2 or High/Med/Low ranking present"
+    },
+    {
+      "text": "Detects circular dependency server <-> reviewer-core",
+      "passed": true,
+      "evidence": "'circular' + 'reviewer-core'"
+    },
+    {
+      "text": "Detects client reaching into server internals",
+      "passed": true,
+      "evidence": "server/src/db/schema reach-in referenced"
+    },
+    {
+      "text": "Detects zod version drift (v3 vs v4)",
+      "passed": true,
+      "evidence": "zod + drift / v3&v4 markers"
+    },
+    {
+      "text": "Detects unused lodash in server",
+      "passed": true,
+      "evidence": "lodash near unused/remove"
+    },
+    {
+      "text": "Detects unused axios in client",
+      "passed": true,
+      "evidence": "axios near unused/remove"
+    },
+    {
+      "text": "Detects duplicate date libraries (date-fns + moment)",
+      "passed": true,
+      "evidence": "date-fns+moment+duplicate/overlap"
+    },
+    {
+      "text": "Detects eslint under dependencies (should be dev)",
+      "passed": true,
+      "evidence": "eslint near devDependencies/tooling"
+    },
+    {
+      "text": "Notes reviewer-core has zero runtime deps (Info)",
+      "passed": true,
+      "evidence": "reviewer-core + zero/no runtime deps"
+    }
+  ]
+}

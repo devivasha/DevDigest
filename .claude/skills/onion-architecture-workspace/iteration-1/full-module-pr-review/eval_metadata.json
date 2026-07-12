@@ -1,0 +1,18 @@
+{
+  "eval_id": 0,
+  "eval_name": "full-module-pr-review",
+  "prompt": "I just finished a new `billing` module for the DevDigest backend (server/src/modules/billing/). Before I open a PR, can you review these four files for any architecture problems? Point out anything that doesn't fit how our backend is structured, with the file and a fix. The files: routes.ts, service.ts, repository.ts, contracts-billing.ts.",
+  "assertions": [
+    { "id": "flags_service_direct_db_query", "text": "Flags that service.ts (openInvoiceCount) runs container.db.select() directly instead of delegating to the repository." },
+    { "id": "flags_adapter_instantiated_in_service", "text": "Flags that service.ts instantiates the adapter (new StripeClient) instead of obtaining it from the Container." },
+    { "id": "flags_secret_from_process_env", "text": "Flags reading process.env.STRIPE_KEY directly instead of the injected SecretsProvider." },
+    { "id": "flags_drizzle_row_leaks_out", "text": "Flags that raw Drizzle rows (InvoiceRow / $inferSelect) leak out of the repository/service instead of returning a domain DTO (missing toDomain)." },
+    { "id": "flags_route_bypasses_service", "text": "Flags that the /billing/summary handler constructs BillingRepository directly, bypassing the service layer." },
+    { "id": "flags_business_logic_in_route", "text": "Flags the dunning-tier loop + if/else business logic living inside the route handler." },
+    { "id": "flags_manual_workspaceid_from_headers", "text": "Flags reading workspaceId from req.headers manually instead of using getContext()." },
+    { "id": "flags_cross_module_repository_import", "text": "Flags repository.ts importing/using another module's AgentsRepository instead of going through its service." },
+    { "id": "flags_missing_workspace_scope", "text": "Flags repository.getById filtering by id only, missing the workspaceId scope (cross-tenant leak)." },
+    { "id": "flags_zod_in_domain_contracts", "text": "Flags that the contracts file imports zod, violating the domain zero-import rule." },
+    { "id": "uses_devdigest_layer_vocabulary", "text": "Frames findings in DevDigest's specific structure (onion layers, Container/composition root, vendor/shared/contracts, toDomain, getContext) rather than only generic advice." }
+  ]
+}

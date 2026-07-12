@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "subtle-single-file-commit",
+  "prompt": "About to commit this new UsageService (server/src/modules/usage/service.ts). It typechecks and works. Anything you'd flag before I push?",
+  "assertions": [
+    { "id": "raises_architecture_concern_unprompted", "text": "Even though only asked 'anything you'd flag?', it proactively raises an onion/layering architecture concern (not just style/nits)." },
+    { "id": "flags_service_direct_db_query", "text": "Flags that the service (monthlyTokens) queries container.db directly and should use a repository." },
+    { "id": "flags_adapter_instantiated_in_service", "text": "Flags that the service does new OpenAIProvider(...) instead of pulling the adapter from container.llm(...)." },
+    { "id": "flags_secret_from_process_env", "text": "Flags reading process.env.OPENAI_API_KEY directly instead of the injected SecretsProvider." },
+    { "id": "recommends_repository_layer", "text": "Recommends introducing a repository layer for the DB access rather than doing I/O in the service." }
+  ]
+}

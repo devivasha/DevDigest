@@ -1,0 +1,10 @@
+{
+  "expectations": [
+    { "text": "Proactively raises an onion/layering concern despite only being asked 'anything to flag?'", "passed": true, "evidence": "'as written it's an application-layer file that reaches straight through the infrastructure layer ... These are onion-architecture violations, not style nits.'" },
+    { "text": "Flags service querying container.db directly; should use a repository", "passed": true, "evidence": "Finding 1: 'Service talks to Drizzle directly — no repository layer ... may not run queries off container.db.'" },
+    { "text": "Flags new OpenAIProvider instead of container.llm", "passed": true, "evidence": "Finding 2: 'Services may not import adapters/* directly — pull the LLM from the container ... const llm = await this.container.llm(\"openai\").'" },
+    { "text": "Flags process.env.OPENAI_API_KEY vs injected SecretsProvider", "passed": true, "evidence": "Finding 2: 'process.env is read directly ... LocalSecretsProvider is the only place that reads process.env.'" },
+    { "text": "Recommends introducing a repository layer", "passed": true, "evidence": "'add modules/usage/repository.ts with a UsageRepository(container.db) that owns the query.'" }
+  ],
+  "summary": { "passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0 }
+}

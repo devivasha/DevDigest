@@ -1,0 +1,16 @@
+{
+  "expectations": [
+    { "text": "Flags service.ts direct container.db query instead of the repository", "passed": true, "evidence": "Finding 5: 'Direct DB query in openInvoiceCount ... Services must never touch container.db; delegate to the repository.'" },
+    { "text": "Flags adapter instantiated in service (new StripeClient)", "passed": true, "evidence": "Finding 6: 'new on an adapter is only allowed in container.ts — services pull adapters from the Container.'" },
+    { "text": "Flags secret read from process.env", "passed": true, "evidence": "Finding 6: 'only LocalSecretsProvider may read process.env; everywhere else uses the injected SecretsProvider.'" },
+    { "text": "Flags raw Drizzle row ($inferSelect) leaking out, missing toDomain", "passed": true, "evidence": "Findings 7 & 9: 'Service returns raw InvoiceRow ($inferSelect)'; 'There is no toDomain() here at all.'" },
+    { "text": "Flags route bypassing service via new BillingRepository", "passed": true, "evidence": "Finding 1: 'Route imports and instantiates its own repository, skipping the service.'" },
+    { "text": "Flags business logic (dunning tier loop/if-else) in the route", "passed": true, "evidence": "Finding 2: '/billing/summary handler contains business logic ... branching + loops must move to the service.'" },
+    { "text": "Flags manual workspaceId from headers instead of getContext", "passed": true, "evidence": "Finding 3: 'never pull workspaceId from req.headers; use getContext(container, req).'" },
+    { "text": "Flags cross-module import of AgentsRepository in the repository", "passed": true, "evidence": "Finding 8: 'Repository imports another module's repository ... AgentsRepository from ../agents/repository.js.'" },
+    { "text": "Flags missing workspaceId scope on getById", "passed": true, "evidence": "Finding 10: 'Missing workspace scoping on getById and markPaid ... cross-tenant leak.' (also caught markPaid)" },
+    { "text": "Flags zod imported in the domain contracts file", "passed": true, "evidence": "Finding 11: 'Domain contract imports Zod ... Domain has a zero-import rule.'" },
+    { "text": "Uses DevDigest layer vocabulary (Container, vendor/shared/contracts, toDomain, getContext, rule files)", "passed": true, "evidence": "Cites dependency-rule.md, application-layer.md, di-container.md, toDomain, getContext, vendor/shared/contracts throughout." }
+  ],
+  "summary": { "passed": 11, "failed": 0, "total": 11, "pass_rate": 1.0 }
+}

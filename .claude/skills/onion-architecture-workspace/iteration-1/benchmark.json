@@ -1,0 +1,486 @@
+{
+  "metadata": {
+    "skill_name": "onion-architecture",
+    "skill_path": "/Users/admin/Desktop/DD2/DevDigest/.claude/skills/onion-architecture",
+    "executor_model": "claude-opus-4-8[1m]",
+    "analyzer_model": "claude-opus-4-8[1m]",
+    "timestamp": "2026-07-12T11:55:58Z",
+    "evals_run": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "eval_name": "full-module-pr-review",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 11,
+        "failed": 0,
+        "total": 11,
+        "time_seconds": 184.8,
+        "tokens": 54247,
+        "tool_calls": 16,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags service.ts direct container.db query instead of the repository",
+          "passed": true,
+          "evidence": "Finding 5: 'Direct DB query in openInvoiceCount ... Services must never touch container.db; delegate to the repository.'"
+        },
+        {
+          "text": "Flags adapter instantiated in service (new StripeClient)",
+          "passed": true,
+          "evidence": "Finding 6: 'new on an adapter is only allowed in container.ts \u2014 services pull adapters from the Container.'"
+        },
+        {
+          "text": "Flags secret read from process.env",
+          "passed": true,
+          "evidence": "Finding 6: 'only LocalSecretsProvider may read process.env; everywhere else uses the injected SecretsProvider.'"
+        },
+        {
+          "text": "Flags raw Drizzle row ($inferSelect) leaking out, missing toDomain",
+          "passed": true,
+          "evidence": "Findings 7 & 9: 'Service returns raw InvoiceRow ($inferSelect)'; 'There is no toDomain() here at all.'"
+        },
+        {
+          "text": "Flags route bypassing service via new BillingRepository",
+          "passed": true,
+          "evidence": "Finding 1: 'Route imports and instantiates its own repository, skipping the service.'"
+        },
+        {
+          "text": "Flags business logic (dunning tier loop/if-else) in the route",
+          "passed": true,
+          "evidence": "Finding 2: '/billing/summary handler contains business logic ... branching + loops must move to the service.'"
+        },
+        {
+          "text": "Flags manual workspaceId from headers instead of getContext",
+          "passed": true,
+          "evidence": "Finding 3: 'never pull workspaceId from req.headers; use getContext(container, req).'"
+        },
+        {
+          "text": "Flags cross-module import of AgentsRepository in the repository",
+          "passed": true,
+          "evidence": "Finding 8: 'Repository imports another module's repository ... AgentsRepository from ../agents/repository.js.'"
+        },
+        {
+          "text": "Flags missing workspaceId scope on getById",
+          "passed": true,
+          "evidence": "Finding 10: 'Missing workspace scoping on getById and markPaid ... cross-tenant leak.' (also caught markPaid)"
+        },
+        {
+          "text": "Flags zod imported in the domain contracts file",
+          "passed": true,
+          "evidence": "Finding 11: 'Domain contract imports Zod ... Domain has a zero-import rule.'"
+        },
+        {
+          "text": "Uses DevDigest layer vocabulary (Container, vendor/shared/contracts, toDomain, getContext, rule files)",
+          "passed": true,
+          "evidence": "Cites dependency-rule.md, application-layer.md, di-container.md, toDomain, getContext, vendor/shared/contracts throughout."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "eval_name": "full-module-pr-review",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.636,
+        "passed": 7,
+        "failed": 4,
+        "total": 11,
+        "time_seconds": 93.3,
+        "tokens": 26819,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags service.ts direct container.db query instead of the repository",
+          "passed": true,
+          "evidence": "Finding 3: 'service queries the DB directly, bypassing its repository ... issuing a raw Drizzle query and importing the DB schema.'"
+        },
+        {
+          "text": "Flags adapter instantiated in service (new StripeClient)",
+          "passed": true,
+          "evidence": "Finding 1: 'the Application layer should depend on an injected adapter obtained from the container, not construct a concrete Infrastructure class.'"
+        },
+        {
+          "text": "Flags secret read from process.env",
+          "passed": true,
+          "evidence": "Finding 1: 'LocalSecretsProvider is the only place allowed to touch process.env.'"
+        },
+        {
+          "text": "Flags raw Drizzle row ($inferSelect) leaking out, missing toDomain",
+          "passed": false,
+          "evidence": "No mention of InvoiceRow/$inferSelect leaking or a missing toDomain mapper. Finding 6 only discusses Zod/TS type drift and shared-package placement, not the row-type leak."
+        },
+        {
+          "text": "Flags route bypassing service via new BillingRepository",
+          "passed": true,
+          "evidence": "Finding 2: 'Instantiating a repository (Infrastructure) directly ... Presentation should never skip the Application layer.'"
+        },
+        {
+          "text": "Flags business logic (dunning tier loop/if-else) in the route",
+          "passed": true,
+          "evidence": "Finding 2: 'Computing the amount-due total and the dunning-tier thresholds \u2014 that's domain/application logic living in a route handler.'"
+        },
+        {
+          "text": "Flags manual workspaceId from headers instead of getContext",
+          "passed": false,
+          "evidence": "Demoted to a Minor/nit: 'x-workspace-id is read and cast as string ... Consider a shared header schema / preHandler.' Never mentions getContext; not treated as an architecture violation."
+        },
+        {
+          "text": "Flags cross-module import of AgentsRepository in the repository",
+          "passed": true,
+          "evidence": "Finding 4: 'billing repo instantiates another module's repository (cross-module coupling at the wrong layer).'"
+        },
+        {
+          "text": "Flags missing workspaceId scope on getById",
+          "passed": false,
+          "evidence": "No finding about getById/markPaid missing workspaceId scoping. The cross-tenant leak is not surfaced."
+        },
+        {
+          "text": "Flags zod imported in the domain contracts file",
+          "passed": false,
+          "evidence": "Does the opposite: Finding 6 suggests deriving types via z.infer<typeof InvoiceSchema>, i.e. keeping Zod in the contract. The domain zero-import rule is not raised."
+        },
+        {
+          "text": "Uses DevDigest layer vocabulary (Container, vendor/shared/contracts, toDomain, getContext, rule files)",
+          "passed": true,
+          "evidence": "Uses onion layers, DI, secrets rule, composition root, @devdigest/shared alias \u2014 strong generic vocabulary (no rule-file citations, no toDomain/getContext)."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "subtle-single-file-commit",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 84.7,
+        "tokens": 34882,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Proactively raises an onion/layering concern despite only being asked 'anything to flag?'",
+          "passed": true,
+          "evidence": "'as written it's an application-layer file that reaches straight through the infrastructure layer ... These are onion-architecture violations, not style nits.'"
+        },
+        {
+          "text": "Flags service querying container.db directly; should use a repository",
+          "passed": true,
+          "evidence": "Finding 1: 'Service talks to Drizzle directly \u2014 no repository layer ... may not run queries off container.db.'"
+        },
+        {
+          "text": "Flags new OpenAIProvider instead of container.llm",
+          "passed": true,
+          "evidence": "Finding 2: 'Services may not import adapters/* directly \u2014 pull the LLM from the container ... const llm = await this.container.llm(\"openai\").'"
+        },
+        {
+          "text": "Flags process.env.OPENAI_API_KEY vs injected SecretsProvider",
+          "passed": true,
+          "evidence": "Finding 2: 'process.env is read directly ... LocalSecretsProvider is the only place that reads process.env.'"
+        },
+        {
+          "text": "Recommends introducing a repository layer",
+          "passed": true,
+          "evidence": "'add modules/usage/repository.ts with a UsageRepository(container.db) that owns the query.'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "subtle-single-file-commit",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 78.0,
+        "tokens": 21901,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Proactively raises an onion/layering concern despite only being asked 'anything to flag?'",
+          "passed": true,
+          "evidence": "Finding 2: 'Application layer talks to the DB directly (onion layering) ... infrastructure/persistence work leaking into the application layer.'"
+        },
+        {
+          "text": "Flags service querying container.db directly; should use a repository",
+          "passed": true,
+          "evidence": "Finding 2: 'It should call a UsageRepository (injected via the container) that owns the query.'"
+        },
+        {
+          "text": "Flags new OpenAIProvider instead of container.llm",
+          "passed": true,
+          "evidence": "Finding 3: 'Service news a concrete adapter instead of depending on an abstraction ... Resolve the provider off this.container.'"
+        },
+        {
+          "text": "Flags process.env.OPENAI_API_KEY vs injected SecretsProvider",
+          "passed": true,
+          "evidence": "Finding 1: 'LocalSecretsProvider is the only place allowed to touch process.env.'"
+        },
+        {
+          "text": "Recommends introducing a repository layer",
+          "passed": true,
+          "evidence": "'I'd route the query through a repository, take both the LLM provider and the API key from the container.'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "greenfield-placement-design",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.857,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 77.6,
+        "tokens": 45288,
+        "tool_calls": 10,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Places Stripe access in an adapter (src/adapters/) wired via Container, not in the service",
+          "passed": true,
+          "evidence": "'goes in src/adapters/stripe/stripe-client.ts, not in modules/ ... The container is the only place new StripeClient(...) may appear.'"
+        },
+        {
+          "text": "Places proration as a pure domain function (no I/O)",
+          "passed": true,
+          "evidence": "'Proration is pure business computation ... vendor/shared/billing/proration.ts \u2014 zero framework imports ... no zod, no drizzle-orm, no fastify.'"
+        },
+        {
+          "text": "Puts request-body validation as a Zod HTTP schema in routes.ts",
+          "passed": true,
+          "evidence": "'a Zod schema at the top of routes.ts ... registered via the Fastify schema option ... Keep this to shape only.'"
+        },
+        {
+          "text": "Persists invoices via a workspace-scoped repository mapping rows to a DTO",
+          "passed": true,
+          "evidence": "'repository.ts is the only billing file that speaks Drizzle ... $inferSelect kept private behind toDomain()/toDb() ... Every query is workspace-scoped.'"
+        },
+        {
+          "text": "Describes endpoints as thin handlers via getContext + one service call",
+          "passed": true,
+          "evidence": "'Each handler does exactly three things: resolve context (getContext) -> call one service method -> send the reply.'"
+        },
+        {
+          "text": "Puts shared Invoice/Plan types in vendor/shared/contracts with zero framework imports",
+          "passed": true,
+          "evidence": "'vendor/shared/contracts/billing.ts ... never a raw Stripe object, never a Drizzle row. That shared contract is also what the Next.js client imports.'"
+        },
+        {
+          "text": "States cross-module data access goes through services, not repositories",
+          "passed": false,
+          "evidence": "Not exercised by this prompt (single new module). The answer stresses the service as orchestration hub and inward dependency directions but does not state the cross-module-via-service rule explicitly."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "greenfield-placement-design",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.286,
+        "passed": 2,
+        "failed": 5,
+        "total": 7,
+        "time_seconds": 70.8,
+        "tokens": 22201,
+        "tool_calls": 1,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Places Stripe access in an adapter (src/adapters/) wired via Container, not in the service",
+          "passed": false,
+          "evidence": "Puts Stripe in modules/billing/stripe.gateway.ts (inside the module), not src/adapters/. Wiring is vague: 'in your container/DI setup or a billing.plugin.ts.' The DevDigest rule (adapters live in src/adapters/, never in modules/) is missed."
+        },
+        {
+          "text": "Places proration as a pure domain function (no I/O)",
+          "passed": false,
+          "evidence": "Places proration in the service: 'Proration is a business rule, so it lives in the service, not the gateway and not the route.' Treated as application logic, never assigned to the domain layer."
+        },
+        {
+          "text": "Puts request-body validation as a Zod HTTP schema in routes.ts",
+          "passed": true,
+          "evidence": "'Define Zod schemas here [schema.ts] and let fastify-type-provider-zod validate at the HTTP boundary ... Wire it as the route's schema.body.'"
+        },
+        {
+          "text": "Persists invoices via a workspace-scoped repository mapping rows to a DTO",
+          "passed": true,
+          "evidence": "'repository.ts is the only file that imports Drizzle ... upsertMany(workspaceId, ...), listForWorkspace(workspaceId)' \u2014 repository + workspace-scoped signatures."
+        },
+        {
+          "text": "Describes endpoints as thin handlers via getContext + one service call",
+          "passed": false,
+          "evidence": "Handlers are thin but workspaceId comes from client input (upgradeBody has workspaceId: z.string().uuid(); getSummary reads req.query.workspaceId). getContext is never used \u2014 and trusting a client-supplied workspaceId is itself a tenancy smell."
+        },
+        {
+          "text": "Puts shared Invoice/Plan types in vendor/shared/contracts with zero framework imports",
+          "passed": false,
+          "evidence": "Puts domain types in modules/billing/billing.types.ts inside the module, not vendor/shared/contracts \u2014 which also blocks the client from importing them."
+        },
+        {
+          "text": "States cross-module data access goes through services, not repositories",
+          "passed": false,
+          "evidence": "Not addressed (single new module prompt)."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "clean-module-no-false-positives",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 118.8,
+        "tokens": 50982,
+        "tool_calls": 14,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "States the module is architecturally clean / no onion violations",
+          "passed": true,
+          "evidence": "'Verdict: Compliant. I found no onion-architecture violations across the four files.'"
+        },
+        {
+          "text": "Does NOT invent a layering/dependency violation that isn't present (no false positives)",
+          "passed": true,
+          "evidence": "Every file marked Compliant; the only note (NotFoundError placement) is explicitly 'not a violation.'"
+        },
+        {
+          "text": "Any suggestions are framed as optional nitpicks, not violations",
+          "passed": true,
+          "evidence": "'Optional, non-blocking: the skill's canonical pattern lets the service raise NotFoundError ... the current placement is not a violation.'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "clean-module-no-false-positives",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 141.7,
+        "tokens": 29028,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "States the module is architecturally clean / no onion violations",
+          "passed": true,
+          "evidence": "'Verdict: no architecture problems found. The module follows the backend's onion layering ... cleanly.'"
+        },
+        {
+          "text": "Does NOT invent a layering/dependency violation that isn't present (no false positives)",
+          "passed": true,
+          "evidence": "The manual-construction note is explicitly 'not an onion breach ... This is a convention-consistency check, not an onion breach.'"
+        },
+        {
+          "text": "Any suggestions are framed as optional nitpicks, not violations",
+          "passed": true,
+          "evidence": "Wiring note framed as 'One thing to confirm (not a violation)'; remaining items under 'Nits (optional, non-architectural).'"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9643,
+        "stddev": 0.0715,
+        "min": 0.857,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 116.475,
+        "stddev": 48.9715,
+        "min": 77.6,
+        "max": 184.8
+      },
+      "tokens": {
+        "mean": 46349.75,
+        "stddev": 8494.3295,
+        "min": 34882,
+        "max": 54247
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.7305,
+        "stddev": 0.3424,
+        "min": 0.286,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 95.95,
+        "stddev": 31.9103,
+        "min": 70.8,
+        "max": 141.7
+      },
+      "tokens": {
+        "mean": 24987.25,
+        "stddev": 3510.5126,
+        "min": 21901,
+        "max": 29028
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.23",
+      "time_seconds": "+20.5",
+      "tokens": "+21362"
+    }
+  },
+  "notes": [
+    "Overall pass rate: with_skill 96% vs baseline 73% (+0.23). The gap is driven entirely by evals 0 and 2; evals 1 and 3 are ties.",
+    "Eval 0 (full-module review): with_skill 11/11 vs baseline 7/11. Baseline caught every GENERIC violation (direct DB, adapter-in-service, secret, cross-module repo, business-logic-in-route) but missed the four DevDigest-specific ones: $inferSelect/toDomain leak, getContext (demoted to a nit), missing workspace scope (a cross-tenant leak), and zod-in-domain (baseline even recommended KEEPING zod via z.infer).",
+    "Eval 2 (greenfield placement): with_skill 6/7 vs baseline 2/7 \u2014 the largest gap. Baseline put the Stripe adapter and domain types INSIDE the module (not src/adapters or vendor/shared), placed proration in the service instead of the domain, and sourced workspaceId from the client request body instead of getContext (a tenancy smell). The skill got each placement right.",
+    "Eval 1 (subtle single file) is NON-DISCRIMINATING: both configs scored 5/5. On a blatant, isolated violation the model's built-in architecture knowledge already catches everything; the skill adds precision/citations but no pass-rate delta.",
+    "Eval 3 (clean module) FALSE-POSITIVE CONTROL passed for both (3/3): neither config fabricated a violation on compliant code. The skill does not push the model into over-reporting.",
+    "The 'cross_module_via_service' assertion (eval 2, id 7) failed for BOTH configs because the single-new-module prompt never exercises cross-module access \u2014 it is a mis-targeted, non-discriminating assertion and should be dropped or moved to a multi-module eval.",
+    "Cost of the skill: +20.5s and +21k tokens on average per run (reading SKILL.md + rules files). Concentrated in eval 0 (184.8s) where the skill drove a far more thorough, rule-cited review."
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "eval_id": 1,
+  "run": "without_skill",
+  "report_found": true,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 5,
+    "failed": 0,
+    "total": 5
+  },
+  "score": "5/5",
+  "expectations": [
+    {
+      "text": "Identifies lodash as unused in server",
+      "passed": true,
+      "evidence": "lodash near unused/remove"
+    },
+    {
+      "text": "Identifies axios as unused in client",
+      "passed": true,
+      "evidence": "axios near unused/remove"
+    },
+    {
+      "text": "Identifies date-fns + moment as duplicate date libs",
+      "passed": true,
+      "evidence": "date-fns+moment+duplicate/overlap"
+    },
+    {
+      "text": "Gives a concrete removal recommendation",
+      "passed": true,
+      "evidence": "'remove' + specific pkg/package.json"
+    },
+    {
+      "text": "Does NOT falsely flag a used dependency as unused",
+      "passed": true,
+      "evidence": "no used dep called unused"
+    }
+  ]
+}

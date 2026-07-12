@@ -1,0 +1,12 @@
+{
+  "expectations": [
+    { "text": "Places Stripe access in an adapter (src/adapters/) wired via Container, not in the service", "passed": true, "evidence": "'goes in src/adapters/stripe/stripe-client.ts, not in modules/ ... The container is the only place new StripeClient(...) may appear.'" },
+    { "text": "Places proration as a pure domain function (no I/O)", "passed": true, "evidence": "'Proration is pure business computation ... vendor/shared/billing/proration.ts — zero framework imports ... no zod, no drizzle-orm, no fastify.'" },
+    { "text": "Puts request-body validation as a Zod HTTP schema in routes.ts", "passed": true, "evidence": "'a Zod schema at the top of routes.ts ... registered via the Fastify schema option ... Keep this to shape only.'" },
+    { "text": "Persists invoices via a workspace-scoped repository mapping rows to a DTO", "passed": true, "evidence": "'repository.ts is the only billing file that speaks Drizzle ... $inferSelect kept private behind toDomain()/toDb() ... Every query is workspace-scoped.'" },
+    { "text": "Describes endpoints as thin handlers via getContext + one service call", "passed": true, "evidence": "'Each handler does exactly three things: resolve context (getContext) -> call one service method -> send the reply.'" },
+    { "text": "Puts shared Invoice/Plan types in vendor/shared/contracts with zero framework imports", "passed": true, "evidence": "'vendor/shared/contracts/billing.ts ... never a raw Stripe object, never a Drizzle row. That shared contract is also what the Next.js client imports.'" },
+    { "text": "States cross-module data access goes through services, not repositories", "passed": false, "evidence": "Not exercised by this prompt (single new module). The answer stresses the service as orchestration hub and inward dependency directions but does not state the cross-module-via-service rule explicitly." }
+  ],
+  "summary": { "passed": 6, "failed": 1, "total": 7, "pass_rate": 0.857 }
+}

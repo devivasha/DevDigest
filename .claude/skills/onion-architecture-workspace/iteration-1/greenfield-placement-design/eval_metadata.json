@@ -1,0 +1,14 @@
+{
+  "eval_id": 2,
+  "eval_name": "greenfield-placement-design",
+  "prompt": "I'm adding usage-based billing to the DevDigest backend and haven't written any code yet. It needs to: (1) pull subscription + past invoices from Stripe, (2) compute proration on mid-cycle upgrade, (3) validate the upgrade request body, (4) persist invoices to Postgres, (5) expose GET /billing/summary and POST /billing/upgrade. How should I structure this across the module — where does each piece live and how do they talk?",
+  "assertions": [
+    { "id": "stripe_as_adapter_via_container", "text": "Places Stripe access in an adapter (src/adapters/) wired through the Container, consumed via container — not instantiated in the service." },
+    { "id": "proration_as_pure_domain", "text": "Places the proration computation as a pure domain function (no I/O), orchestrated by the service." },
+    { "id": "body_validation_zod_in_routes", "text": "Puts request-body validation as a Zod HTTP schema in routes.ts (presentation layer)." },
+    { "id": "persistence_in_workspace_scoped_repository", "text": "Persists invoices via a repository (infra), workspace-scoped, mapping rows to a domain DTO." },
+    { "id": "thin_routes_via_getcontext", "text": "Describes endpoints as thin handlers: getContext -> one service call -> reply." },
+    { "id": "contracts_in_vendor_shared", "text": "Puts shared Invoice/Plan types in vendor/shared/contracts with zero framework imports." },
+    { "id": "cross_module_via_service", "text": "States cross-module data access must go through the other module's service, not its repository." }
+  ]
+}

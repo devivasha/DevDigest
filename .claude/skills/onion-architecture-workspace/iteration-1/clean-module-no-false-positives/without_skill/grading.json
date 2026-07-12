@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    { "text": "States the module is architecturally clean / no onion violations", "passed": true, "evidence": "'Verdict: no architecture problems found. The module follows the backend's onion layering ... cleanly.'" },
+    { "text": "Does NOT invent a layering/dependency violation that isn't present (no false positives)", "passed": true, "evidence": "The manual-construction note is explicitly 'not an onion breach ... This is a convention-consistency check, not an onion breach.'" },
+    { "text": "Any suggestions are framed as optional nitpicks, not violations", "passed": true, "evidence": "Wiring note framed as 'One thing to confirm (not a violation)'; remaining items under 'Nits (optional, non-architectural).'" }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 }
+}

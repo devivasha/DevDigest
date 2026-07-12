@@ -1,0 +1,363 @@
+{
+  "metadata": {
+    "skill_name": "dependency-checker",
+    "skill_path": "/Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-07-12T12:51:28Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 10,
+        "failed": 0,
+        "total": 10,
+        "time_seconds": 209.907,
+        "tokens": 34026,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph found"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low ranking present"
+        },
+        {
+          "text": "Detects circular dependency server <-> reviewer-core",
+          "passed": true,
+          "evidence": "'circular' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects client reaching into server internals",
+          "passed": true,
+          "evidence": "server/src/db/schema reach-in referenced"
+        },
+        {
+          "text": "Detects zod version drift (v3 vs v4)",
+          "passed": true,
+          "evidence": "zod + drift / v3&v4 markers"
+        },
+        {
+          "text": "Detects unused lodash in server",
+          "passed": true,
+          "evidence": "lodash near unused/remove"
+        },
+        {
+          "text": "Detects unused axios in client",
+          "passed": true,
+          "evidence": "axios near unused/remove"
+        },
+        {
+          "text": "Detects duplicate date libraries (date-fns + moment)",
+          "passed": true,
+          "evidence": "date-fns+moment+duplicate/overlap"
+        },
+        {
+          "text": "Detects eslint under dependencies (should be dev)",
+          "passed": true,
+          "evidence": "eslint near devDependencies/tooling"
+        },
+        {
+          "text": "Notes reviewer-core has zero runtime deps (Info)",
+          "passed": true,
+          "evidence": "reviewer-core + zero/no runtime deps"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 512.666,
+        "tokens": 39559,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Identifies lodash as unused in server",
+          "passed": true,
+          "evidence": "lodash near unused/remove"
+        },
+        {
+          "text": "Identifies axios as unused in client",
+          "passed": true,
+          "evidence": "axios near unused/remove"
+        },
+        {
+          "text": "Identifies date-fns + moment as duplicate date libs",
+          "passed": true,
+          "evidence": "date-fns+moment+duplicate/overlap"
+        },
+        {
+          "text": "Gives a concrete removal recommendation",
+          "passed": true,
+          "evidence": "'remove' + specific pkg/package.json"
+        },
+        {
+          "text": "Does NOT falsely flag a used dependency as unused",
+          "passed": true,
+          "evidence": "no used dep called unused"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 504.083,
+        "tokens": 40690,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects circular dependency server <-> reviewer-core",
+          "passed": true,
+          "evidence": "'circular' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects client reaching into server internals",
+          "passed": true,
+          "evidence": "server/src/db/schema reach-in referenced"
+        },
+        {
+          "text": "Detects zod version drift (v3 vs v4)",
+          "passed": true,
+          "evidence": "zod + drift / v3&v4 markers"
+        },
+        {
+          "text": "Names the specific files involved",
+          "passed": true,
+          "evidence": "files: service.ts, pipeline.ts, db.ts, config.ts, schema.ts"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 10,
+        "failed": 0,
+        "total": 10,
+        "time_seconds": 351.151,
+        "tokens": 33523,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph found"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low ranking present"
+        },
+        {
+          "text": "Detects circular dependency server <-> reviewer-core",
+          "passed": true,
+          "evidence": "'circular' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects client reaching into server internals",
+          "passed": true,
+          "evidence": "server/src/db/schema reach-in referenced"
+        },
+        {
+          "text": "Detects zod version drift (v3 vs v4)",
+          "passed": true,
+          "evidence": "zod + drift / v3&v4 markers"
+        },
+        {
+          "text": "Detects unused lodash in server",
+          "passed": true,
+          "evidence": "lodash near unused/remove"
+        },
+        {
+          "text": "Detects unused axios in client",
+          "passed": true,
+          "evidence": "axios near unused/remove"
+        },
+        {
+          "text": "Detects duplicate date libraries (date-fns + moment)",
+          "passed": true,
+          "evidence": "date-fns+moment+duplicate/overlap"
+        },
+        {
+          "text": "Detects eslint under dependencies (should be dev)",
+          "passed": true,
+          "evidence": "eslint near devDependencies/tooling"
+        },
+        {
+          "text": "Notes reviewer-core has zero runtime deps (Info)",
+          "passed": true,
+          "evidence": "reviewer-core + zero/no runtime deps"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 291.736,
+        "tokens": 27656,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Identifies lodash as unused in server",
+          "passed": true,
+          "evidence": "lodash near unused/remove"
+        },
+        {
+          "text": "Identifies axios as unused in client",
+          "passed": true,
+          "evidence": "axios near unused/remove"
+        },
+        {
+          "text": "Identifies date-fns + moment as duplicate date libs",
+          "passed": true,
+          "evidence": "date-fns+moment+duplicate/overlap"
+        },
+        {
+          "text": "Gives a concrete removal recommendation",
+          "passed": true,
+          "evidence": "'remove' + specific pkg/package.json"
+        },
+        {
+          "text": "Does NOT falsely flag a used dependency as unused",
+          "passed": true,
+          "evidence": "no used dep called unused"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 289.578,
+        "tokens": 29218,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects circular dependency server <-> reviewer-core",
+          "passed": true,
+          "evidence": "'circular' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects client reaching into server internals",
+          "passed": true,
+          "evidence": "server/src/db/schema reach-in referenced"
+        },
+        {
+          "text": "Detects zod version drift (v3 vs v4)",
+          "passed": true,
+          "evidence": "zod + drift / v3&v4 markers"
+        },
+        {
+          "text": "Names the specific files involved",
+          "passed": true,
+          "evidence": "files: service.ts, pipeline.ts, db.ts, config.ts, schema.ts"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 408.8853,
+        "stddev": 172.3737,
+        "min": 209.907,
+        "max": 512.666
+      },
+      "tokens": {
+        "mean": 38091.6667,
+        "stddev": 3566.0937,
+        "min": 34026,
+        "max": 40690
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 310.8217,
+        "stddev": 34.9429,
+        "min": 289.578,
+        "max": 351.151
+      },
+      "tokens": {
+        "mean": 30132.3333,
+        "stddev": 3038.4908,
+        "min": 27656,
+        "max": 33523
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.00",
+      "time_seconds": "+98.1",
+      "tokens": "+7959"
+    }
+  },
+  "notes": []
+}
