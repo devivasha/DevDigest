@@ -50,12 +50,14 @@ export const cases: AgentCase[] = [
     name: "does not fabricate an architecture finding for the out-of-scope security-shaped change",
     kind: "quality",
     prompt: REVIEW_PROMPT,
-    // Phrased positively: the judge PASSes a practice only with a verbatim quote proving it was MET,
-    // so an absence ("does not raise X") has nothing to quote and always fails. These assert the
-    // reviewer's affirmative classification instead — meeting it produces a quotable finding.
+    // Phrased positively AND without pinning the exact quote: the judge PASSes only with a verbatim
+    // quote proving the practice was MET, so (a) an absence ("does not raise X") has nothing to quote
+    // and always fails, and (b) demanding a specific quote (the `reply?` *parameter*) fails when the
+    // model evidences the same violation via the import line instead. Accept either quote; let the
+    // second practice carry the "stayed in scope, invented no security finding" signal.
     practices: [
-      "classifies the optional `reply?: FastifyReply` parameter as part of the inward-only-dependencies layering violation (a Presentation-layer framework type in a Domain-layer signature), treating it as a layering/DI concern rather than a runtime-bug, null-safety, or security bug",
-      "every finding it raises is a structural / layering / DI concern tied to a documented architectural contract, rather than a naming, style, or test-coverage comment",
+      'flags the Fastify framework type reaching the Domain layer as an inward-only-dependencies layering violation — evidenced by the `import type { FastifyReply } from "fastify"` line and/or the `reply?: FastifyReply` parameter it enables — rather than as a runtime-bug, null-safety, or security finding',
+      "every finding it raises is a structural / layering / DI concern tied to a documented architectural contract, not a runtime-bug, null-safety, security, naming, style, or test-coverage comment",
     ],
     threshold: 1.0,
     maxTurns: 25,
@@ -79,10 +81,14 @@ export const cases: AgentCase[] = [
     name: "does not fabricate a documented-rule violation for a benign rename",
     kind: "quality",
     prompt: BENIGN_PROMPT,
+    // Two positively-anchored practices, tolerant of format variance. The dropped third practice
+    // ("does not fabricate a documented-rule violation") was a pure absence — nothing to quote, so
+    // the judge returned evidence:null and failed it even on a correct clean report. On a benign
+    // diff a model often free-forms its "all clear" instead of the full Verdict table, so both
+    // practices accept an equivalent explicit statement, not only the literal `PASS` gate line.
     practices: [
-      "reports no violations for the benign rename (or records only `info`-level, non-blocking observations) — it does not invent a critical/high/medium finding",
-      "does not fabricate a documented-rule violation where the diff violates none of the checked rules",
-      "the final gate verdict is PASS",
+      'concludes the benign rename introduces no rule violations — it fabricates no critical/high/medium finding (states "No violations found", shows an empty or `info`-only findings table, or otherwise explicitly reports the diff as clean)',
+      "its overall verdict is clean — a `PASS` gate, or an equivalent explicit statement that nothing blocks merge",
     ],
     threshold: 1.0,
     maxTurns: 25,
