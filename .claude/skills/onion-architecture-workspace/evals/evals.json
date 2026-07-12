@@ -1,0 +1,43 @@
+{
+  "skill_name": "onion-architecture",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-module-pr-review",
+      "prompt": "I just finished a new `billing` module for the DevDigest backend (server/src/modules/billing/). Before I open a PR, can you review these four files for any architecture problems? Point out anything that doesn't fit how our backend is structured, with the file and a fix.\n\nThe files are attached: routes.ts, service.ts, repository.ts, contracts-billing.ts.",
+      "expected_output": "Identifies the planted onion-architecture violations across all four layers (see answer-key.md V1-V10): service querying the DB directly / instantiating Stripe / leaking Drizzle rows; route bypassing the service and holding dunning logic + reading workspaceId from headers; repository reaching into agents' repository, missing workspace scope, exporting $inferSelect; zod imported in the contracts file. Uses DevDigest layer vocabulary and gives per-file fixes.",
+      "files": [
+        "fixtures/tc1-billing-module/routes.ts",
+        "fixtures/tc1-billing-module/service.ts",
+        "fixtures/tc1-billing-module/repository.ts",
+        "fixtures/tc1-billing-module/contracts-billing.ts"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "subtle-single-file-commit",
+      "prompt": "About to commit this new UsageService (server/src/modules/usage/service.ts). It typechecks and works. Anything you'd flag before I push?\n\n(file attached: service.ts)",
+      "expected_output": "Even though the prompt does not ask for an architecture audit, the run proactively flags that the service queries the DB directly (should go through a repository) and instantiates OpenAIProvider with process.env instead of pulling the adapter from the Container and secrets from the injected provider (answer-key.md U1-U3).",
+      "files": ["fixtures/tc2-usage/service.ts"]
+    },
+    {
+      "id": 2,
+      "name": "greenfield-placement-design",
+      "prompt": "I'm adding usage-based billing to the DevDigest backend and haven't written any code yet. It needs to: (1) pull the current subscription + past invoices from Stripe, (2) compute proration when a workspace upgrades mid-cycle, (3) validate the upgrade request body from the client, (4) persist invoices to Postgres, and (5) expose GET /billing/summary and POST /billing/upgrade. How should I structure this across the module — where does each of those five pieces live, and how do they talk to each other?",
+      "expected_output": "Maps each piece to the correct layer using DevDigest's structure (answer-key.md TC3): Stripe access = adapter wired in container; proration = pure domain function orchestrated by service; body validation = Zod HTTP schema in routes; persistence = workspace-scoped repository with toDomain; endpoints = thin handlers via getContext + one service call; shared types in vendor/shared/contracts. Cross-module talk goes through services, not repositories.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "clean-module-no-false-positives",
+      "prompt": "I just finished a new `webhooks` module for the DevDigest backend (server/src/modules/webhooks/). Before I open a PR, can you review these four files for any architecture problems? Point out anything that doesn't fit how our backend is structured, with the file and a fix.\n\nThe files are attached: routes.ts, service.ts, repository.ts, contracts-webhooks.ts.",
+      "expected_output": "The module is architecturally clean — it follows every onion rule (private $inferSelect + toDomain, workspace-scoped queries, thin routes via getContext, no adapter instantiation or DB access in the service, zero-import contracts, application-level limit check in the service). The correct response reports NO architecture violations. It may offer minor optional nitpicks, but must NOT invent layering/dependency violations that aren't there (false positives).",
+      "files": [
+        "fixtures/tc4-webhooks-clean/routes.ts",
+        "fixtures/tc4-webhooks-clean/service.ts",
+        "fixtures/tc4-webhooks-clean/repository.ts",
+        "fixtures/tc4-webhooks-clean/contracts-webhooks.ts"
+      ]
+    }
+  ]
+}

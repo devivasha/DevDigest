@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "unused-and-duplicate",
+  "prompt": "In the TypeScript project at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo (packages: server/, client/, reviewer-core/, e2e/ — treat this folder as the repo root), I think we have some npm packages we installed but never actually import, and maybe two libraries doing the same job. Find the unused dependencies and any duplicate/overlapping ones, and tell me specifically which packages to remove from which package.json.",
+  "assertions": [
+    { "text": "Identifies lodash as unused in server/package.json", "tier": "P1" },
+    { "text": "Identifies axios as unused in client/package.json", "tier": "P1" },
+    { "text": "Identifies date-fns and moment as duplicate/overlapping date libraries in client", "tier": "P2" },
+    { "text": "Gives a concrete removal recommendation (which package to remove from which package.json)", "tier": "action" },
+    { "text": "Does NOT falsely claim a genuinely-used dependency (zod, fastify, next, react, drizzle-orm, date-fns) is unused", "tier": "no-false-positive" }
+  ]
+}

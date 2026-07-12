@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "health-check",
+  "prompt": "Here's a TypeScript project at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo-2 (packages: server/, client/, reviewer-core/, e2e/; treat this folder as the repo root, ignore the outer repo). Is our dependency setup healthy? Point out anything worth cleaning up or that could bite us later, and how you'd fix it.",
+  "assertions": [
+    { "text": "Detects the cross-package circular dependency (loop through server -> shared -> reviewer-core -> server)", "tier": "P0" },
+    { "text": "Detects the vitest version drift (client ^1.6 vs ^2.x elsewhere)", "tier": "P1" },
+    { "text": "Does NOT falsely flag tailwindcss as unused (it is used via tailwind.config.ts / postcss)", "tier": "no-false-positive" },
+    { "text": "Detects duplicate/overlapping date libraries across packages (date-fns in server + dayjs in client)", "tier": "P2" },
+    { "text": "Detects uuid as unused in server", "tier": "P1" },
+    { "text": "Output contains a Mermaid dependency graph", "tier": "structure" },
+    { "text": "Findings carry explicit severity tiers", "tier": "structure" }
+  ]
+}

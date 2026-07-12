@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "coupling-and-drift",
+  "prompt": "Audit the cross-package coupling in the TypeScript project at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo (packages server/, client/, reviewer-core/, e2e/ — this folder is the repo root). I'm specifically worried about three things: circular imports between packages, one package reaching into another package's internal source files, and the same dependency pinned to different major versions in different packages. Tell me exactly what you found and in which files.",
+  "assertions": [
+    { "text": "Detects the circular dependency between server and reviewer-core", "tier": "P0" },
+    { "text": "Detects client reaching into server internals via relative import ../../../server/src/db/schema", "tier": "P0" },
+    { "text": "Detects zod version drift (server ^3.x vs client ^4.x)", "tier": "P1" },
+    { "text": "Names the specific files involved (e.g. service.ts / pipeline.ts for the cycle, client/src/lib/db.ts for the reach-in)", "tier": "specificity" }
+  ]
+}

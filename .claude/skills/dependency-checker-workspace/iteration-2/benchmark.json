@@ -1,0 +1,383 @@
+{
+  "metadata": {
+    "skill_name": "dependency-checker",
+    "skill_path": "/Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-07-12T13:38:44Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 450.794,
+        "tokens": 37249,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 527.754,
+        "tokens": 38779,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 579.617,
+        "tokens": 42170,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 444.841,
+        "tokens": 32888,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 444.636,
+        "tokens": 37399,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": true,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8571,
+        "passed": 6,
+        "failed": 1,
+        "total": 7,
+        "time_seconds": 423.068,
+        "tokens": 33824,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Detects the cross-package circular dependency (server -> shared -> reviewer-core -> server)",
+          "passed": true,
+          "evidence": "'circular/cycle' + 'shared' + 'reviewer-core'"
+        },
+        {
+          "text": "Detects the vitest version drift (client ^1.6 vs ^2.x)",
+          "passed": true,
+          "evidence": "vitest + v1 marker + drift/^2"
+        },
+        {
+          "text": "Does NOT falsely flag tailwindcss as unused",
+          "passed": true,
+          "evidence": "tailwind not flagged unused"
+        },
+        {
+          "text": "Detects duplicate date libraries across packages (date-fns + dayjs)",
+          "passed": true,
+          "evidence": "date-fns + dayjs + duplicate/overlap"
+        },
+        {
+          "text": "Detects uuid as unused in server",
+          "passed": true,
+          "evidence": "uuid near unused/remove"
+        },
+        {
+          "text": "Output contains a Mermaid dependency graph",
+          "passed": false,
+          "evidence": "```mermaid + flowchart/graph"
+        },
+        {
+          "text": "Findings carry explicit severity tiers",
+          "passed": true,
+          "evidence": "P0/P1/P2 or High/Med/Low"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 519.3883,
+        "stddev": 64.8177,
+        "min": 450.794,
+        "max": 579.617
+      },
+      "tokens": {
+        "mean": 39399.3333,
+        "stddev": 2518.4659,
+        "min": 37249,
+        "max": 42170
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9524,
+        "stddev": 0.0825,
+        "min": 0.8571,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 437.515,
+        "stddev": 12.5119,
+        "min": 423.068,
+        "max": 444.841
+      },
+      "tokens": {
+        "mean": 34703.6667,
+        "stddev": 2380.6806,
+        "min": 32888,
+        "max": 37399
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.05",
+      "time_seconds": "+81.9",
+      "tokens": "+4696"
+    }
+  },
+  "notes": []
+}

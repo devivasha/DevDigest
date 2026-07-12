@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@devdigest/api/*": ["server/src/*"],
+      "@devdigest/reviewer-core/*": ["reviewer-core/src/*"],
+      "@devdigest/shared": ["server/src/vendor/shared/index.ts"]
+    }
+  }
+}

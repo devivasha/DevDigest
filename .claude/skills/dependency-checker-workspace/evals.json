@@ -1,0 +1,35 @@
+{
+  "skill_name": "dependency-checker",
+  "baseline": "without_skill",
+  "fixture_root": "/Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo",
+  "planted_findings": [
+    { "id": "circular", "tier": "P0", "where": "server <-> reviewer-core (service.ts imports reviewer-core/pipeline; pipeline.ts imports @devdigest/api/config)" },
+    { "id": "reach-into-internals", "tier": "P0", "where": "client/src/lib/db.ts imports ../../../server/src/db/schema (relative cross-package, bypasses shared alias)" },
+    { "id": "zod-version-drift", "tier": "P1", "where": "server zod ^3.23.8 vs client zod ^4.0.5" },
+    { "id": "unused-lodash", "tier": "P1", "where": "server/package.json declares lodash, never imported" },
+    { "id": "unused-axios", "tier": "P1", "where": "client/package.json declares axios, never imported" },
+    { "id": "duplicate-date-libs", "tier": "P2", "where": "client uses both date-fns and moment in src/lib/dates.ts" },
+    { "id": "eslint-in-dependencies", "tier": "P2", "where": "server/package.json lists eslint under dependencies, not devDependencies" },
+    { "id": "reviewer-core-zero-deps", "tier": "Info", "where": "reviewer-core has empty runtime dependencies" }
+  ],
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-audit",
+      "prompt": "I'm doing a dependency cleanup on a TypeScript project located at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo . Treat THAT directory as the repository root (ignore the outer repo it happens to sit inside). It has four packages: server/, client/, reviewer-core/, and e2e/. Give me a full dependency audit: what depends on what (a graph is welcome), a size breakdown, and every problem worth fixing, prioritized by severity with a concrete recommended action for each.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "unused-and-duplicate",
+      "prompt": "In the TypeScript project at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo (packages: server/, client/, reviewer-core/, e2e/ — treat this folder as the repo root), I think we have some npm packages we installed but never actually import, and maybe two libraries doing the same job. Find the unused dependencies and any duplicate/overlapping ones, and tell me specifically which packages to remove from which package.json.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "coupling-and-drift",
+      "prompt": "Audit the cross-package coupling in the TypeScript project at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo (packages server/, client/, reviewer-core/, e2e/ — this folder is the repo root). I'm specifically worried about three things: circular imports between packages, one package reaching into another package's internal source files, and the same dependency pinned to different major versions in different packages. Tell me exactly what you found and in which files.",
+      "files": []
+    }
+  ]
+}

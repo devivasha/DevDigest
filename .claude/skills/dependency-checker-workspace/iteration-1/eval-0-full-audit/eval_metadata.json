@@ -1,0 +1,17 @@
+{
+  "eval_id": 0,
+  "eval_name": "full-audit",
+  "prompt": "I'm doing a dependency cleanup on a TypeScript project located at /Users/admin/Desktop/DD2/DevDigest/.claude/skills/dependency-checker-workspace/fixtures/mini-repo . Treat THAT directory as the repository root (ignore the outer repo it happens to sit inside). It has four packages: server/, client/, reviewer-core/, and e2e/. Give me a full dependency audit: what depends on what (a graph is welcome), a size breakdown, and every problem worth fixing, prioritized by severity with a concrete recommended action for each.",
+  "assertions": [
+    { "text": "Output contains a Mermaid dependency graph (```mermaid ... flowchart)", "tier": "structure" },
+    { "text": "Findings carry explicit severity tiers (P0/P1/P2/Info or equivalent High/Med/Low ranking)", "tier": "structure" },
+    { "text": "Detects the circular dependency between server (@devdigest/api) and reviewer-core", "tier": "P0" },
+    { "text": "Detects client reaching into server internals via relative import ../../../server/src/db/schema", "tier": "P0" },
+    { "text": "Detects zod version drift (server ^3.x vs client ^4.x)", "tier": "P1" },
+    { "text": "Detects unused lodash in server/package.json", "tier": "P1" },
+    { "text": "Detects unused axios in client/package.json", "tier": "P1" },
+    { "text": "Detects duplicate/overlapping date libraries (date-fns and moment both in client)", "tier": "P2" },
+    { "text": "Detects eslint declared under dependencies (should be devDependencies) in server", "tier": "P2" },
+    { "text": "Notes reviewer-core has zero runtime dependencies (Info)", "tier": "Info" }
+  ]
+}

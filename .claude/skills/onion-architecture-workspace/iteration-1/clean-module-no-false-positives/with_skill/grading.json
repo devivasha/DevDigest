@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    { "text": "States the module is architecturally clean / no onion violations", "passed": true, "evidence": "'Verdict: Compliant. I found no onion-architecture violations across the four files.'" },
+    { "text": "Does NOT invent a layering/dependency violation that isn't present (no false positives)", "passed": true, "evidence": "Every file marked Compliant; the only note (NotFoundError placement) is explicitly 'not a violation.'" },
+    { "text": "Any suggestions are framed as optional nitpicks, not violations", "passed": true, "evidence": "'Optional, non-blocking: the skill's canonical pattern lets the service raise NotFoundError ... the current placement is not a violation.'" }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 }
+}

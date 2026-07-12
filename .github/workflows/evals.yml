@@ -1,0 +1,205 @@
+# Harness evals — skills, subagents, and the workflow tier.
+#
+# Runs on a PR ONLY when a harness artifact changes, and runs ONLY the evals that
+# artifact affects (see evals/scripts/ci-detect.mjs):
+#
+#   .claude/skills/<name>/**  → evals/skills/<name>   (content tier — native OpenRouter, no proxy)
+#   .claude/agents/<name>.md  → evals/agents/<name>   (tool tier — LiteLLM proxy)
+#   CLAUDE.md / any agent / engine change             → the workflow tier (tool tier — LiteLLM proxy)
+#
+# A changed artifact with NO written evals is NOT a failure: it is printed as a
+# visible "SKIP <name> (no evals)" line in the detect job's summary.
+#
+# Everything runs on OpenRouter (EVAL_BACKEND=openrouter). Models are job parameters,
+# not UI — defaults below, overridable via the "Run workflow" inputs. The workflow tier
+# needs a model that really dispatches a subagent, so it defaults to Gemini 2.5 Flash;
+# the cheaper tiers default to DeepSeek. (README → "Which cheap model — verified".)
+name: evals
+
+on:
+  pull_request:
+    paths:
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'CLAUDE.md'
+      - '.claude/CLAUDE.md'
+      - 'evals/**'
+      - '.github/workflows/evals.yml'
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: 'EVAL_BACKEND (openrouter | subscription)'
+        default: 'openrouter'
+      skills_model:
+        description: 'Model for the content tier (skills + judge)'
+        default: 'deepseek/deepseek-chat'
+      agents_model:
+        description: 'Model for the agents tool tier'
+        default: 'deepseek/deepseek-chat'
+      workflow_model:
+        description: 'Model for the workflow tool tier (needs real subagent dispatch)'
+        default: 'google/gemini-2.5-flash'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same across every job. The model is set per-job (it differs by tier).
+  EVAL_BACKEND: ${{ github.event.inputs.backend || 'openrouter' }}
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+jobs:
+  # ── 1. Detect which evals this PR needs ──────────────────────────────────────
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.detect.outputs.skills }}
+      agents: ${{ steps.detect.outputs.agents }}
+      run_workflow: ${{ steps.detect.outputs.run_workflow }}
+      skipped_skills: ${{ steps.detect.outputs.skipped_skills }}
+      skipped_agents: ${{ steps.detect.outputs.skipped_agents }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need the merge-base to diff the PR
+
+      - name: Compute changed files
+        id: changed
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          if [ -n "$base" ]; then
+            range="$base...${{ github.event.pull_request.head.sha }}"   # PR: changes since merge-base
+          else
+            git fetch --no-tags --depth=1 origin main                    # manual dispatch: vs origin/main
+            range="origin/main...HEAD"
+          fi
+          {
+            echo 'list<<__EOF__'
+            git diff --name-only "$range"
+            echo '__EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Map changes → eval suites
+        id: detect
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.list }}
+        run: node evals/scripts/ci-detect.mjs
+
+      - name: Summary (incl. skipped artifacts)
+        if: always()
+        run: |
+          {
+            echo '### Eval change detection'
+            echo ''
+            echo "- **skills → run:** \`${{ steps.detect.outputs.skills }}\`"
+            echo "- **agents → run:** \`${{ steps.detect.outputs.agents }}\`"
+            echo "- **workflow tier:** \`${{ steps.detect.outputs.run_workflow }}\`"
+            [ -n '${{ steps.detect.outputs.skipped_skills }}' ] && echo "- ⏭️ **SKIP skills (no evals):** ${{ steps.detect.outputs.skipped_skills }}"
+            [ -n '${{ steps.detect.outputs.skipped_agents }}' ] && echo "- ⏭️ **SKIP agents (no evals):** ${{ steps.detect.outputs.skipped_agents }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── 2. Content tier — one job per changed skill (native OpenRouter, no proxy) ─
+  skills:
+    needs: detect
+    if: needs.detect.outputs.skills != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.detect.outputs.skills) }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      EVAL_MODEL: ${{ github.event.inputs.skills_model || 'deepseek/deepseek-chat' }}
+      EVAL_JUDGE_MODEL: ${{ github.event.inputs.skills_model || 'deepseek/deepseek-chat' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Trailing slash isolates exactly this skill (a bare name substring-matches siblings).
+      - run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+
+  # ── 3. Agents tool tier — one job per changed agent (via LiteLLM proxy) ───────
+  agents:
+    needs: detect
+    if: needs.detect.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: ${{ fromJSON(needs.detect.outputs.agents) }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ github.event.inputs.agents_model || 'deepseek/deepseek-chat' }}
+      EVAL_JUDGE_MODEL: ${{ github.event.inputs.agents_model || 'deepseek/deepseek-chat' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      # The Agent SDK speaks Anthropic wire protocol; the proxy translates to a cheap
+      # non-Anthropic OpenRouter model. Key comes from the job env (fed by the secret).
+      - run: docker compose -f proxy/docker-compose.yml up -d
+      - run: pnpm proxy:wait
+      - run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism
+      - if: failure()
+        run: docker compose -f proxy/docker-compose.yml logs --tail 100
+      - if: always()
+        run: docker compose -f proxy/docker-compose.yml down
+
+  # ── 4. Workflow tier — the LIVE harness (CLAUDE.md + config), via proxy ───────
+  # Advisory: tool-tier activation/dispatch is flaky on cheap models under load
+  # (README caveats). Reports, never blocks the merge. Flip continue-on-error to gate it.
+  workflow:
+    needs: detect
+    if: needs.detect.outputs.run_workflow == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ github.event.inputs.workflow_model || 'google/gemini-2.5-flash' }}
+      EVAL_JUDGE_MODEL: ${{ github.event.inputs.workflow_model || 'google/gemini-2.5-flash' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      - run: docker compose -f proxy/docker-compose.yml up -d
+      - run: pnpm proxy:wait
+      - run: pnpm exec vitest run workflow --no-file-parallelism
+      - if: failure()
+        run: docker compose -f proxy/docker-compose.yml logs --tail 100
+      - if: always()
+        run: docker compose -f proxy/docker-compose.yml down

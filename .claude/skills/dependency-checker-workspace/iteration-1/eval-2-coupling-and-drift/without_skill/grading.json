@@ -1,0 +1,34 @@
+{
+  "eval_id": 2,
+  "run": "without_skill",
+  "report_found": true,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 4,
+    "failed": 0,
+    "total": 4
+  },
+  "score": "4/4",
+  "expectations": [
+    {
+      "text": "Detects circular dependency server <-> reviewer-core",
+      "passed": true,
+      "evidence": "'circular' + 'reviewer-core'"
+    },
+    {
+      "text": "Detects client reaching into server internals",
+      "passed": true,
+      "evidence": "server/src/db/schema reach-in referenced"
+    },
+    {
+      "text": "Detects zod version drift (v3 vs v4)",
+      "passed": true,
+      "evidence": "zod + drift / v3&v4 markers"
+    },
+    {
+      "text": "Names the specific files involved",
+      "passed": true,
+      "evidence": "files: service.ts, pipeline.ts, db.ts, config.ts, schema.ts"
+    }
+  ]
+}

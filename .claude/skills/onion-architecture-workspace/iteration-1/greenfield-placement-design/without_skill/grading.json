@@ -1,0 +1,12 @@
+{
+  "expectations": [
+    { "text": "Places Stripe access in an adapter (src/adapters/) wired via Container, not in the service", "passed": false, "evidence": "Puts Stripe in modules/billing/stripe.gateway.ts (inside the module), not src/adapters/. Wiring is vague: 'in your container/DI setup or a billing.plugin.ts.' The DevDigest rule (adapters live in src/adapters/, never in modules/) is missed." },
+    { "text": "Places proration as a pure domain function (no I/O)", "passed": false, "evidence": "Places proration in the service: 'Proration is a business rule, so it lives in the service, not the gateway and not the route.' Treated as application logic, never assigned to the domain layer." },
+    { "text": "Puts request-body validation as a Zod HTTP schema in routes.ts", "passed": true, "evidence": "'Define Zod schemas here [schema.ts] and let fastify-type-provider-zod validate at the HTTP boundary ... Wire it as the route's schema.body.'" },
+    { "text": "Persists invoices via a workspace-scoped repository mapping rows to a DTO", "passed": true, "evidence": "'repository.ts is the only file that imports Drizzle ... upsertMany(workspaceId, ...), listForWorkspace(workspaceId)' — repository + workspace-scoped signatures." },
+    { "text": "Describes endpoints as thin handlers via getContext + one service call", "passed": false, "evidence": "Handlers are thin but workspaceId comes from client input (upgradeBody has workspaceId: z.string().uuid(); getSummary reads req.query.workspaceId). getContext is never used — and trusting a client-supplied workspaceId is itself a tenancy smell." },
+    { "text": "Puts shared Invoice/Plan types in vendor/shared/contracts with zero framework imports", "passed": false, "evidence": "Puts domain types in modules/billing/billing.types.ts inside the module, not vendor/shared/contracts — which also blocks the client from importing them." },
+    { "text": "States cross-module data access goes through services, not repositories", "passed": false, "evidence": "Not addressed (single new module prompt)." }
+  ],
+  "summary": { "passed": 2, "failed": 5, "total": 7, "pass_rate": 0.286 }
+}
