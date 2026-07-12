@@ -52,8 +52,8 @@ d('Settings: feature models + secrets status (Testcontainers pg)', () => {
     });
     // An unset feature still resolves to its own registry default.
     expect(await resolveFeatureModel(app.container, workspaceId, 'risk_brief')).toEqual({
-      provider: 'openai',
-      model: 'gpt-4.1',
+      provider: 'openrouter',
+      model: 'deepseek/deepseek-v4-flash',
     });
 
     await app.close();

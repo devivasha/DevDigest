@@ -10,6 +10,21 @@
   "overlap": "{count} overlap",
   "unavailable": "Brief not available yet.",
   "unavailableHint": "Run a review or open the PR to compute it.",
+  "sectionLabel": "Why + Risk Brief",
+  "regenerate": "Regenerate",
+  "regenerateAria": "Regenerate the Why + Risk Brief",
+  "error": "Brief could not be generated.",
+  "whatLabel": "What",
+  "whyLabel": "Why",
+  "riskLevel": "Risk level",
+  "riskLevelLabels": {
+    "high": "High risk",
+    "medium": "Medium risk",
+    "low": "Low risk"
+  },
+  "risksLabel": "Risks",
+  "reviewFocusLabel": "Review focus",
+  "emptyRisks": "No notable risks flagged.",
   "why": {
     "title": "git-why",
     "blame": "blame",

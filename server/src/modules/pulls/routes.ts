@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { PrMeta, PrDetail, GitHubClient, PrReviewComment, SmartDiff, SmartDiffFile, SmartDiffRole } from '@devdigest/shared';
+import type { PrMeta, PrDetail, GitHubClient, PrReviewComment, SmartDiff, SmartDiffFile } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus, rollupSeverities, type SeverityCounts } from './status.js';
-import { classifyFile, deriveFileSummary, LARGE_PR_THRESHOLD } from './smart-diff-classifier.js';
+import { deriveFileSummary, groupSmartDiff } from './smart-diff-classifier.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -403,48 +403,15 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         findingLinesByFile.set(f.file, list);
       }
 
-      const buckets = new Map<SmartDiffRole, SmartDiffFile[]>([
-        ['core', []],
-        ['wiring', []],
-        ['boilerplate', []],
-      ]);
-      let totalLines = 0;
-      for (const f of files) {
-        const role = classifyFile(f.path);
-        const lines = (findingLinesByFile.get(f.path) ?? []).sort((a, b) => a - b);
-        buckets.get(role)!.push({
-          path: f.path,
-          additions: f.additions,
-          deletions: f.deletions,
-          finding_lines: lines,
-          pseudocode_summary: deriveFileSummary(f.patch),
-        });
-        totalLines += f.additions + f.deletions;
-      }
+      const smartDiffFiles: SmartDiffFile[] = files.map((f) => ({
+        path: f.path,
+        additions: f.additions,
+        deletions: f.deletions,
+        finding_lines: (findingLinesByFile.get(f.path) ?? []).sort((a, b) => a - b),
+        pseudocode_summary: deriveFileSummary(f.patch),
+      }));
 
-      const boilerplatePaths = (buckets.get('boilerplate') ?? []).map((f) => f.path);
-      const corePaths = [
-        ...(buckets.get('core') ?? []),
-        ...(buckets.get('wiring') ?? []),
-      ].map((f) => f.path);
-      const proposed_splits =
-        totalLines > LARGE_PR_THRESHOLD && boilerplatePaths.length > 0
-          ? [
-              { name: 'Logic changes', files: corePaths },
-              { name: 'Lockfile / generated', files: boilerplatePaths },
-            ]
-          : [];
-
-      return {
-        groups: (['core', 'wiring', 'boilerplate'] as SmartDiffRole[])
-          .map((role) => ({ role, files: buckets.get(role)! }))
-          .filter((g) => g.files.length > 0),
-        split_suggestion: {
-          too_big: totalLines > LARGE_PR_THRESHOLD,
-          total_lines: totalLines,
-          proposed_splits,
-        },
-      };
+      return groupSmartDiff(smartDiffFiles);
     },
   );
 }
