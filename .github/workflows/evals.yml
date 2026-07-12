@@ -98,8 +98,12 @@ jobs:
             echo "- **skills → run:** \`${{ steps.detect.outputs.skills }}\`"
             echo "- **agents → run:** \`${{ steps.detect.outputs.agents }}\`"
             echo "- **workflow tier:** \`${{ steps.detect.outputs.run_workflow }}\`"
-            [ -n '${{ steps.detect.outputs.skipped_skills }}' ] && echo "- ⏭️ **SKIP skills (no evals):** ${{ steps.detect.outputs.skipped_skills }}"
-            [ -n '${{ steps.detect.outputs.skipped_agents }}' ] && echo "- ⏭️ **SKIP agents (no evals):** ${{ steps.detect.outputs.skipped_agents }}"
+            if [ -n '${{ steps.detect.outputs.skipped_skills }}' ]; then
+              echo "- ⏭️ **SKIP skills (no evals):** ${{ steps.detect.outputs.skipped_skills }}"
+            fi
+            if [ -n '${{ steps.detect.outputs.skipped_agents }}' ]; then
+              echo "- ⏭️ **SKIP agents (no evals):** ${{ steps.detect.outputs.skipped_agents }}"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ── 2. Content tier — one job per changed skill (native OpenRouter, no proxy) ─
