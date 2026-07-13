@@ -1,8 +1,13 @@
 {
   "dashboard": {
     "defaultTitle": "Eval Dashboard",
+    "allSubheader": "Regression harness across all reviewer agents · pick an agent to see its runs",
+    "agentsHeading": "Agents",
+    "recentRunsAll": "Recent eval runs · all agents",
     "loading": "Loading eval metrics…",
     "casesSummary": "{count, plural, one {# eval case} other {# eval cases}} · gold set · {runs, plural, one {# run} other {# runs}}",
+    "subheader": "Regression harness · {runs, plural, one {# run} other {# runs}} on the {cases}-case gold set",
+    "selectAgent": "Switch agent",
     "configure": "Configure eval cases →",
     "runEval": "Run eval ({count})",
     "running": "Running…",
@@ -28,11 +33,39 @@
       "cost": "Cost"
     },
     "pass": "pass",
-    "fail": "fail"
+    "fail": "fail",
+    "regression": {
+      "banner": "Regression detected since the previous run",
+      "dipped": "{metric} dipped by {magnitude}"
+    },
+    "degraded": {
+      "badge": "Degraded",
+      "tooltip": "Citation accuracy is unavailable — this case's diff could not be parsed, so the review was skipped for it"
+    },
+    "underMin": "This run set has fewer than 8 cases — results may be noisy and are less reliable as a signal.",
+    "range": {
+      "d7": "7 days",
+      "d30": "30 days",
+      "d90": "90 days",
+      "all": "All time"
+    },
+    "compare": {
+      "title": "Compare runs",
+      "titleVersions": "Compare runs · v{base} → v{head}",
+      "subtitle": "Old prompt vs new — metric deltas and prompt diff",
+      "promptDiff": "System prompt diff",
+      "legendOld": "v{v} (old)",
+      "legendNew": "v{v} (new)",
+      "noSecondRun": "Select a second run to compare against",
+      "close": "Close",
+      "promote": "Promote v{v}",
+      "promoted": "Promoted v{v} — its prompt is now the agent's active config"
+    }
   },
   "caseEditor": {
     "newCase": "New eval case",
     "caseTitle": "Eval case · {name}",
+    "subtitle": "{owner} · simulate a PR and assert the expected output",
     "runCase": "Run case",
     "running": "Running…",
     "save": "Save",
@@ -42,6 +75,7 @@
     "inputLabel": "Input",
     "tabs": {
       "diff": "Diff",
+      "files": "Files",
       "prMeta": "PR meta"
     },
     "diffPlaceholder": "--- a/src/config.ts\n+++ b/src/config.ts\n@@ -10,6 +10,7 @@\n+  stripeKey: \"sk_live_...\"",
@@ -55,7 +89,11 @@
     "invalidJson": "invalid JSON",
     "lastRunPassed": "Last run passed",
     "lastRunFailed": "Last run failed",
-    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s"
+    "lastRunSummary": "expected {expected, plural, one {# finding} other {# findings}}, got {got} · {duration}s",
+    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s",
+    "cancel": "Cancel",
+    "runOnSave": "Run on save",
+    "findingSkeleton": "+ Finding skeleton"
   },
   "evalsTab": {
     "metricsTitle": "Eval metrics",
@@ -71,7 +109,14 @@
     "run": "Run",
     "running": "Running…",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "runAll": "Run all evals",
+    "viewDashboard": "View full dashboard →",
+    "tracesPassed": "TRACES PASSED",
+    "passingCount": "{passing}/{total} passing",
+    "expectedGot": "expected {expected, plural, one {# finding} other {# findings}}, got {got}",
+    "emptyBrackets": "empty []",
+    "loadError": "Could not load eval data."
   },
   "page": {
     "crumbSkillsLab": "Skills Lab",
@@ -80,5 +125,18 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
+  },
+  "finding": {
+    "turnIntoCase": "Turn into eval case",
+    "turnIntoCaseAria": "Turn this finding into an eval case",
+    "createdToast": "Eval case created",
+    "mustFindHint": "Accepted findings become a \"must find\" expectation",
+    "mustNotFlagHint": "Dismissed findings become a \"must not flag\" expectation",
+    "untriagedDisabledAria": "Accept or dismiss this finding before turning it into an eval case"
+  },
+  "common": {
+    "up": "Increased",
+    "down": "Decreased",
+    "flat": "No change"
   }
 }

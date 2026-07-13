@@ -8,6 +8,7 @@ import { Toggle, EmptyState, SEV, Icon } from "@devdigest/ui";
 import type { FindingRecord, Severity } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
+import { useCreateCaseFromFinding } from "../../../../../../../lib/hooks/eval";
 import { KEY_TO_ACTION, SEVERITY_FILTERS } from "./constants";
 import { visibleFindings } from "./helpers";
 import { s } from "./styles";
@@ -18,15 +19,22 @@ export function FindingsPanel({
   repoFullName,
   headSha,
   targetFindingId,
+  agentId,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
   targetFindingId?: string | null;
+  /** Owning agent of this review — required to route "Turn into eval case"
+   *  (`POST /agents/:id/eval-cases/from-finding`). The route `:id` is used only
+   *  as an authz cross-check server-side; the body carries just `finding_id`
+   *  (finding #4). Omitted → the action silently no-ops (caller not yet wired). */
+  agentId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
+  const createCase = useCreateCaseFromFinding();
   const [hideLow, setHideLow] = React.useState(false);
   const [activeSeverity, setActiveSeverity] = React.useState<Severity | null>(
     null,
@@ -109,11 +117,16 @@ export function FindingsPanel({
                 f={f}
                 focused={i === focusIdx}
                 defaultExpanded={targetFindingId ? f.id === targetFindingId : i === 0}
-                pending={action.isPending}
+                pending={action.isPending || createCase.isPending}
                 repoFullName={repoFullName}
                 headSha={headSha}
                 onAction={(act) =>
                   action.mutate({ findingId: f.id, action: act, prId })
+                }
+                onCreateEvalCase={
+                  agentId
+                    ? () => createCase.mutate({ agentId, findingId: f.id })
+                    : undefined
                 }
               />
             </div>

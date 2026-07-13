@@ -17,6 +17,7 @@
     "db:seed": "cd server && pnpm db:seed",
     "db:generate": "cd server && pnpm db:generate",
     "verify:l03": "node scripts/verify-l03.mjs",
+    "verify:l06": "node scripts/verify-l06.mjs",
     "mcp": "cd mcp-server && pnpm start",
     "mcp:inspect": "cd mcp-server && pnpm inspect",
     "mcp:smoke": "cd mcp-server && pnpm smoke"

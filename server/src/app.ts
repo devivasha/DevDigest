@@ -64,6 +64,32 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  // Tolerate an EMPTY `application/json` body. Several endpoints take no request
+  // body (e.g. `POST /agents/:id/eval-runs`, finding accept/dismiss), but many
+  // HTTP clients (curl, Postman, some fetch setups) attach a default
+  // `Content-Type: application/json` header to any POST. Fastify's built-in JSON
+  // parser rejects an empty body with a generic 400 ("Body cannot be empty when
+  // content-type is set to 'application/json'") BEFORE the handler runs. Treat an
+  // empty/whitespace body as "no body" (undefined) so those endpoints work from
+  // any client; a non-empty body is still JSON-parsed and still 400s if malformed.
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      const raw = typeof body === 'string' ? body.trim() : '';
+      if (raw === '') {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(raw));
+      } catch (err) {
+        (err as { statusCode?: number }).statusCode = 400;
+        done(err as Error, undefined);
+      }
+    },
+  );
+
   const container = new Container(config, db, opts.overrides);
   app.decorate('container', container);
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Verdict, Finding } from './findings';
+import { Verdict, Finding, Severity, FindingCategory } from './findings';
 import { EvalRun, EvalOwnerKind, Conformance } from './knowledge';
 
 /**
@@ -16,6 +16,27 @@ import { EvalRun, EvalOwnerKind, Conformance } from './knowledge';
 // Eval — case input + persisted run record + dashboard
 // ===========================================================================
 
+/**
+ * Expected outcome for an eval case (GAP-4 — validated on write, not left as
+ * `z.unknown()`). `kind: 'must_find'` findings must be matched by a kept
+ * (post-grounding) produced finding for the case to pass; `'must_not_flag'`
+ * findings must NOT be matched by any produced finding (kept or dropped).
+ */
+export const EvalExpectation = z.object({
+  kind: z.enum(['must_find', 'must_not_flag']),
+  findings: z.array(
+    z.object({
+      file: z.string(),
+      start_line: z.number().int(),
+      end_line: z.number().int(),
+      severity: Severity,
+      category: FindingCategory,
+      title: z.string(),
+    }),
+  ),
+});
+export type EvalExpectation = z.infer<typeof EvalExpectation>;
+
 /** Create/update payload for an eval case (id + owner resolved by the route). */
 export const EvalCaseInput = z.object({
   owner_kind: EvalOwnerKind,
@@ -24,7 +45,7 @@ export const EvalCaseInput = z.object({
   input_diff: z.string().default(''),
   input_files: z.unknown().nullish(),
   input_meta: z.unknown().nullish(),
-  expected_output: z.unknown(),
+  expected_output: EvalExpectation,
   notes: z.string().nullish(),
 });
 export type EvalCaseInput = z.infer<typeof EvalCaseInput>;
@@ -42,8 +63,64 @@ export const EvalRunRecord = z.object({
   citation_accuracy: z.number().nullable(),
   duration_ms: z.number().int().nullable(),
   cost_usd: z.number().nullable(),
+  /** FK to the parent `eval_set_runs` aggregate row (null for legacy/ad-hoc runs). */
+  set_run_id: z.string().nullable(),
+  /** Denormalized agent version snapshot at run time (null for legacy/ad-hoc runs). */
+  version: z.number().int().nullable(),
 });
 export type EvalRunRecord = z.infer<typeof EvalRunRecord>;
+
+/**
+ * A persisted set-level run aggregate (one row per `POST .../eval-runs`),
+ * carrying the reproducibility snapshot (agent version + exact system prompt
+ * + model) pinned at run time (GAP-1/AC-12). Rendered by the dashboard
+ * "Recent eval runs" table (GAP-2) and used as the compare (AC-13) unit.
+ * NOTE: intentionally has no `workspace_id` field — tenancy stays server-only
+ * (cross-model review finding #1); every server-side query is still scoped by
+ * `workspace_id`, it's just not exposed on this wire contract.
+ */
+export const EvalSetRunRecord = z.object({
+  id: z.string(),
+  owner_kind: EvalOwnerKind,
+  owner_id: z.string(),
+  ran_at: z.string(),
+  version: z.number().int(),
+  system_prompt: z.string(),
+  model: z.string(),
+  recall: z.number(),
+  precision: z.number(),
+  citation_accuracy: z.number().nullable(),
+  traces_passed: z.number().int(),
+  traces_total: z.number().int(),
+  duration_ms: z.number().int().nullable(),
+  cost_usd: z.number().nullable(),
+  under_min: z.boolean(),
+});
+export type EvalSetRunRecord = z.infer<typeof EvalSetRunRecord>;
+
+/** Compare exactly two set runs — signed metric deltas + a system-prompt diff (AC-13). */
+export const EvalCompare = z.object({
+  base: EvalSetRunRecord,
+  head: EvalSetRunRecord,
+  delta: z.object({
+    recall: z.number(),
+    precision: z.number(),
+    citation_accuracy: z.number().nullable(),
+    cost_usd: z.number().nullable(),
+  }),
+  prompt_diff: z.object({
+    base_prompt: z.string(),
+    head_prompt: z.string(),
+  }),
+});
+export type EvalCompare = z.infer<typeof EvalCompare>;
+
+/** Result of running a whole eval set: the persisted set-run id + the aggregate metrics. */
+export const EvalSetRunResult = z.object({
+  set_run_id: z.string(),
+  result: EvalRun,
+});
+export type EvalSetRunResult = z.infer<typeof EvalSetRunResult>;
 
 /** Result of running a single case: the metrics (EvalRun) + the persisted row id. */
 export const EvalRunResult = z.object({
@@ -52,6 +129,24 @@ export const EvalRunResult = z.object({
   result: EvalRun,
 });
 export type EvalRunResult = z.infer<typeof EvalRunResult>;
+
+/**
+ * A case's LATEST persisted run status (one row per case, not per run) —
+ * powers the Evals tab's per-case pass/fail icon on page load, before any
+ * in-session run has happened. Absent from the list returned by
+ * `GET /agents/:id/eval-cases/status` means the case has never been run.
+ */
+export const EvalCaseStatus = z.object({
+  case_id: z.string(),
+  name: z.string(),
+  pass: z.boolean(),
+  produced_count: z.number().int().nullable(),
+  degraded: z.boolean(),
+  duration_ms: z.number().int().nullable(),
+  cost_usd: z.number().nullable(),
+  ran_at: z.string(),
+});
+export type EvalCaseStatus = z.infer<typeof EvalCaseStatus>;
 
 /** One point on the dashboard trend (per run, chronological). */
 export const EvalTrendPoint = z.object({
@@ -83,8 +178,12 @@ export const EvalDashboard = z.object({
     citation_accuracy: z.number(),
   }),
   trend: z.array(EvalTrendPoint),
-  recent_runs: z.array(EvalRunRecord),
+  recent_runs: z.array(EvalSetRunRecord),
   alert: z.string().nullable(),
+  /** Map of agent owner_id → number of eval cases that owner has. Lets the
+   *  all-agents dashboard hide agents with no eval set instead of rendering
+   *  a stale/never-run card for them (L06 dashboard fix). */
+  owner_case_counts: z.record(z.string(), z.number().int()).default({}),
 });
 export type EvalDashboard = z.infer<typeof EvalDashboard>;
 

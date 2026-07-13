@@ -3,14 +3,32 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
+import evalMessages from "../../../../../../../../messages/en/eval.json";
+
+const mockActionMutate = vi.fn();
+const mockCreateCaseMutate = vi.fn();
 
 vi.mock("../../../../../../../lib/hooks/reviews", () => ({
-  useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
+  useFindingAction: () => ({ mutate: mockActionMutate, isPending: false }),
+}));
+
+// FindingsPanel calls `useCreateCaseFromFinding()` (a TanStack Query hook)
+// unconditionally — mock the hook at the boundary so the test never needs a
+// real QueryClientProvider/network and the mutation call is observable
+// directly (regression fix: this previously crashed with "No QueryClient
+// set, use QueryClientProvider to set one" — see client/insights/INSIGHTS.md
+// 2026-07-12 T11 entry).
+vi.mock("../../../../../../../lib/hooks/eval", () => ({
+  useCreateCaseFromFinding: () => ({ mutate: mockCreateCaseMutate, isPending: false }),
 }));
 
 import { FindingsPanel } from "./FindingsPanel";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  mockActionMutate.mockClear();
+  mockCreateCaseMutate.mockClear();
+});
 
 const FINDINGS: FindingRecord[] = [
   {
@@ -35,7 +53,7 @@ const FINDINGS: FindingRecord[] = [
 
 function renderWithIntl(ui: React.ReactElement) {
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+    <NextIntlClientProvider locale="en" messages={{ prReview: messages, eval: evalMessages }}>
       {ui}
     </NextIntlClientProvider>,
   );
@@ -74,5 +92,40 @@ describe("FindingsPanel (smoke)", () => {
     // Click again → reset
     fireEvent.click(screen.getByRole("button", { name: /critical/i }));
     expect(screen.getByText("Warn finding")).toBeInTheDocument();
+  });
+
+  // AC-1: from an accepted finding, "Turn into eval case" creates a case in
+  // one click (no confirmation step) — the mutation fires immediately on click.
+  it("creates an eval case in one click from an accepted finding, with no confirmation step", () => {
+    const accepted: FindingRecord = { ...FINDINGS[0]!, accepted_at: "2026-07-01T00:00:00.000Z" };
+    renderWithIntl(<FindingsPanel findings={[accepted]} prId="pr1" agentId="agent-1" />);
+
+    const btn = screen.getByRole("button", {
+      name: "Turn this finding into an eval case",
+    });
+    expect(btn).toBeEnabled();
+
+    fireEvent.click(btn);
+
+    // One click → the mutation fires immediately with the finding + owning
+    // agent id; no confirmation dialog is rendered anywhere in the DOM.
+    expect(mockCreateCaseMutate).toHaveBeenCalledTimes(1);
+    expect(mockCreateCaseMutate).toHaveBeenCalledWith({ agentId: "agent-1", findingId: "f1" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  // AC-4: an untriaged finding (neither accepted nor dismissed) cannot have a
+  // case-type derived — the action must render disabled with an accessible
+  // name, and clicking it (even if forced) must not create anything.
+  it("disables 'Turn into eval case' for an untriaged finding and creates nothing", () => {
+    renderWithIntl(<FindingsPanel findings={FINDINGS} prId="pr1" agentId="agent-1" />);
+
+    const btn = screen.getByRole("button", {
+      name: "Accept or dismiss this finding before turning it into an eval case",
+    });
+    expect(btn).toBeDisabled();
+
+    fireEvent.click(btn);
+    expect(mockCreateCaseMutate).not.toHaveBeenCalled();
   });
 });

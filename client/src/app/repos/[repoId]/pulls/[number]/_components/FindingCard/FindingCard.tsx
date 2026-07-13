@@ -28,6 +28,7 @@ export function FindingCard({
   focused,
   defaultExpanded,
   onAction,
+  onCreateEvalCase,
   pending,
   repoFullName,
   headSha,
@@ -36,11 +37,15 @@ export function FindingCard({
   focused?: boolean;
   defaultExpanded?: boolean;
   onAction?: (action: FindingActionKind, reply?: string) => void;
+  /** "Turn into eval case" — presentational only; the container (FindingsPanel)
+   *  wires this to `useCreateCaseFromFinding()`. Disabled when untriaged (AC-4). */
+  onCreateEvalCase?: () => void;
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
 }) {
   const t = useTranslations("prReview");
+  const tEval = useTranslations("eval");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
   const sevColor = SEV_COLOR[f.severity] ?? SEV_COLOR_FALLBACK;
   const fileHref =
@@ -50,6 +55,8 @@ export function FindingCard({
   const accepted = !!f.accepted_at;
   const dismissed = !!f.dismissed_at;
   const muted = accepted || dismissed;
+  // Untriaged: no expectation kind can be derived (must_find/must_not_flag) — AC-4.
+  const untriaged = !accepted && !dismissed;
 
   return (
     <div data-finding-id={f.id} style={s.card(!!focused, sevColor, muted)}>
@@ -108,6 +115,20 @@ export function FindingCard({
               onClick={() => onAction?.("dismiss")}
             >
               {t("finding.dismiss")}
+            </Button>
+            <Button
+              kind="ghost"
+              size="sm"
+              icon="FlaskConical"
+              disabled={pending || untriaged}
+              aria-label={
+                untriaged
+                  ? tEval("finding.untriagedDisabledAria")
+                  : tEval("finding.turnIntoCaseAria")
+              }
+              onClick={() => onCreateEvalCase?.()}
+            >
+              {tEval("finding.turnIntoCase")}
             </Button>
           </div>
         </div>
