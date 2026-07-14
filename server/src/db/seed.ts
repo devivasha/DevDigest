@@ -3,7 +3,7 @@ import { createDb, type Db } from "./client.js";
 import * as t from "./schema.js";
 import { eq, and } from "drizzle-orm";
 import { INDEXER_VERSION } from "../modules/repo-intel/constants.js";
-import type { RunTrace } from "@devdigest/shared";
+import { EvalExpectation, type RunTrace } from "@devdigest/shared";
 
 /**
  * Seed the starter's demo data. Idempotent: re-running upserts the default
@@ -970,6 +970,277 @@ For each finding cite the exact file:line and suggest a backwards-compatible alt
           .insert(t.agentSkills)
           .values({ agentId: apiAgent!.id, skillId, order: i })
           .onConflictDoNothing();
+      }
+    }
+  }
+
+  // ---- eval cases (T15 — AC-15/AC-16 data) ---------------------------------
+  // Seeds >= 8 eval_cases for the "General Reviewer" agent so a run set clears
+  // the AC-15 minimum and AC-16's sensitivity experiment (same case set run
+  // under two materially different system prompts, comparing recall/precision
+  // movement) has real data to run against. The owner agent id is NOT
+  // deterministic — it must be resolved by selecting on (workspaceId, name).
+  //
+  // Two small handcrafted unified diffs are used as `input_diff`. Every
+  // `expected_output.findings[]` line range below lands inside a REAL hunk of
+  // its diff (verified against `parseUnifiedDiff`'s `newLineNumbers`), so
+  // citation-accuracy scoring on a real run can be > 0 (reviewer-core INSIGHTS
+  // — grounding intersects diff hunks, not fuzzy quote matching).
+  //
+  // AC-16 note: this seed does not duplicate the agent under a second prompt —
+  // the sensitivity experiment is exercised by running this same 8-case set
+  // once under "General Reviewer"'s seeded prompt and again after editing its
+  // system prompt (e.g. to the stricter "Security Reviewer" prompt already
+  // seeded above) and comparing the two eval_set_runs via the compare surface.
+  {
+    const [generalReviewer] = await db
+      .select()
+      .from(t.agents)
+      .where(
+        and(
+          eq(t.agents.workspaceId, workspaceId),
+          eq(t.agents.name, "General Reviewer"),
+        ),
+      );
+
+    if (generalReviewer) {
+      const ownerId = generalReviewer.id;
+
+      // Diff 1 — src/api/public/checkout.ts: hardcoded Stripe secret key
+      // (new line 4) + an untrusted request-body token passed straight into
+      // the charge source (new line 14). Single hunk covers new lines 1-17.
+      const checkoutDiff = [
+        'diff --git a/src/api/public/checkout.ts b/src/api/public/checkout.ts',
+        '--- a/src/api/public/checkout.ts',
+        '+++ b/src/api/public/checkout.ts',
+        '@@ -1,6 +1,17 @@',
+        ' import { db } from "../../db/client";',
+        '+import { stripe } from "../../lib/stripe";',
+        '+',
+        '+const STRIPE_SECRET = "sk_live_51H8xyzABCDEF1234567890";',
+        '',
+        ' export async function checkout(req, res) {',
+        '-  const order = await db.query("SELECT * FROM orders WHERE id = $1", [req.params.id]);',
+        '+  let order = await db.query("SELECT * FROM orders WHERE id = ?", [req.params.id]);',
+        '+  if (!order) {',
+        '+    order = await db.query("SELECT * FROM orders WHERE id = ?", [req.params.id]);',
+        '+  }',
+        '+  const charge = await stripe.charges.create({',
+        '+    amount: order.total,',
+        '+    currency: "usd",',
+        '+    source: req.body.token,',
+        '+  });',
+        '   res.json(order);',
+        ' }',
+      ].join("\n");
+
+      // Diff 2 — src/lib/upload.ts: an unsanitized query-string filename
+      // joined into an upload directory and written to disk (path traversal +
+      // arbitrary write). Single hunk covers new lines 1-18.
+      const uploadDiff = [
+        'diff --git a/src/lib/upload.ts b/src/lib/upload.ts',
+        '--- a/src/lib/upload.ts',
+        '+++ b/src/lib/upload.ts',
+        '@@ -1,7 +1,19 @@',
+        ' import fs from "node:fs";',
+        '+import path from "node:path";',
+        '+',
+        '+const UPLOAD_DIR = "/var/data/uploads";',
+        '',
+        ' export async function saveUpload(req, res) {',
+        '-  const filename = req.body.filename;',
+        '-  res.json({ ok: true });',
+        '+  const filename = req.query.filename;',
+        '+  const target = path.join(UPLOAD_DIR, filename);',
+        '+  fs.writeFileSync(target, req.body.contents);',
+        '+  res.json({ ok: true, path: target });',
+        '+}',
+        '+',
+        '+export function listUploads() {',
+        '+  return fs.readdirSync(UPLOAD_DIR).map((name) => ({',
+        '+    name,',
+        '+    size: fs.statSync(path.join(UPLOAD_DIR, name)).size,',
+        '+  }));',
+        ' }',
+      ].join("\n");
+
+      const evalCaseDefs: Array<{
+        name: string;
+        inputDiff: string;
+        expectedOutput: EvalExpectation;
+        notes: string;
+      }> = [
+        {
+          name: "eval-seed-01-hardcoded-stripe-secret",
+          inputDiff: checkoutDiff,
+          expectedOutput: {
+            kind: "must_find",
+            findings: [
+              {
+                file: "src/api/public/checkout.ts",
+                start_line: 4,
+                end_line: 4,
+                severity: "CRITICAL",
+                category: "security",
+                title: "Hardcoded Stripe secret key in source",
+              },
+            ],
+          },
+          notes: "Must find: literal sk_live_ key committed in plaintext.",
+        },
+        {
+          name: "eval-seed-02-untrusted-charge-source",
+          inputDiff: checkoutDiff,
+          expectedOutput: {
+            kind: "must_find",
+            findings: [
+              {
+                file: "src/api/public/checkout.ts",
+                start_line: 11,
+                end_line: 15,
+                severity: "WARNING",
+                category: "security",
+                title:
+                  "Untrusted request-body token passed directly as the Stripe charge source",
+              },
+            ],
+          },
+          notes:
+            "Must find: req.body.token flows unvalidated into stripe.charges.create.",
+        },
+        {
+          name: "eval-seed-03-benign-response-line",
+          inputDiff: checkoutDiff,
+          expectedOutput: {
+            kind: "must_not_flag",
+            findings: [
+              {
+                file: "src/api/public/checkout.ts",
+                start_line: 16,
+                end_line: 16,
+                severity: "SUGGESTION",
+                category: "style",
+                title: "Returning the order object",
+              },
+            ],
+          },
+          notes: "Must not flag: plain response of an already-loaded order.",
+        },
+        {
+          name: "eval-seed-04-benign-retry-block",
+          inputDiff: checkoutDiff,
+          expectedOutput: {
+            kind: "must_not_flag",
+            findings: [
+              {
+                file: "src/api/public/checkout.ts",
+                start_line: 7,
+                end_line: 8,
+                severity: "SUGGESTION",
+                category: "style",
+                title: "Reassigning order via let",
+              },
+            ],
+          },
+          notes:
+            "Must not flag: switching const to let for a single conditional reassignment.",
+        },
+        {
+          name: "eval-seed-05-path-traversal-filename",
+          inputDiff: uploadDiff,
+          expectedOutput: {
+            kind: "must_find",
+            findings: [
+              {
+                file: "src/lib/upload.ts",
+                start_line: 7,
+                end_line: 8,
+                severity: "CRITICAL",
+                category: "security",
+                title:
+                  "Unsanitized query-string filename enables path traversal",
+              },
+            ],
+          },
+          notes:
+            "Must find: req.query.filename joined into UPLOAD_DIR with no sanitization.",
+        },
+        {
+          name: "eval-seed-06-arbitrary-file-write",
+          inputDiff: uploadDiff,
+          expectedOutput: {
+            kind: "must_find",
+            findings: [
+              {
+                file: "src/lib/upload.ts",
+                start_line: 9,
+                end_line: 9,
+                severity: "CRITICAL",
+                category: "security",
+                title:
+                  "Writes an arbitrary file to disk without validating the target path",
+              },
+            ],
+          },
+          notes: "Must find: fs.writeFileSync uses the unvalidated target path.",
+        },
+        {
+          name: "eval-seed-07-benign-imports",
+          inputDiff: uploadDiff,
+          expectedOutput: {
+            kind: "must_not_flag",
+            findings: [
+              {
+                file: "src/lib/upload.ts",
+                start_line: 1,
+                end_line: 2,
+                severity: "SUGGESTION",
+                category: "style",
+                title: "Adds a node:path import",
+              },
+            ],
+          },
+          notes: "Must not flag: ordinary import statements.",
+        },
+        {
+          name: "eval-seed-08-benign-list-uploads",
+          inputDiff: uploadDiff,
+          expectedOutput: {
+            kind: "must_not_flag",
+            findings: [
+              {
+                file: "src/lib/upload.ts",
+                start_line: 13,
+                end_line: 16,
+                severity: "SUGGESTION",
+                category: "style",
+                title: "listUploads reads directory contents",
+              },
+            ],
+          },
+          notes:
+            "Must not flag: read-only directory listing over the fixed UPLOAD_DIR.",
+        },
+      ];
+
+      for (const def of evalCaseDefs) {
+        // GAP-4 — validate on write against EvalExpectation, never trust the
+        // literal shape above.
+        const expectedOutput = EvalExpectation.parse(def.expectedOutput);
+        await db
+          .insert(t.evalCases)
+          .values({
+            workspaceId,
+            ownerKind: "agent",
+            ownerId,
+            name: def.name,
+            inputDiff: def.inputDiff,
+            expectedOutput,
+            notes: def.notes,
+          })
+          .onConflictDoNothing({
+            target: [t.evalCases.workspaceId, t.evalCases.ownerId, t.evalCases.name],
+          });
       }
     }
   }
