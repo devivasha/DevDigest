@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Verdict, Finding, Severity, FindingCategory } from './findings';
-import { EvalRun, EvalOwnerKind, Conformance } from './knowledge';
+import { EvalRun, EvalOwnerKind, Conformance, Provider, CiFailOn } from './knowledge';
 
 /**
  * A4 — Eval / CI / Compose / Conformance API contracts (L06).
@@ -240,6 +240,35 @@ export const CiFile = z.object({
 });
 export type CiFile = z.infer<typeof CiFile>;
 
+/**
+ * AgentManifest — the agent contract shared by the studio and the CI runner.
+ *
+ * The studio (`CiService.agentYaml`) WRITES this shape to
+ * `.devdigest/agents/<slug>.yaml`; the agent-runner READS it. Keeping one Zod
+ * schema for both ends guarantees the formats never drift. `skills` are slugs
+ * resolved to `.devdigest/skills/<slug>.md`.
+ */
+export const AgentManifest = z.object({
+  name: z.string().min(1),
+  provider: Provider.default('openrouter'),
+  model: z.string().min(1),
+  system_prompt: z.string(),
+  // Tolerate both a missing key and an explicit `null` (YAML `skills:` with no
+  // value parses to null, which `.default([])` does NOT catch) — normalize both
+  // to an empty array so manifests without skills validate cleanly.
+  skills: z
+    .array(z.string())
+    .nullish()
+    .transform((v) => v ?? []),
+  strategy: z.enum(['auto', 'single-pass', 'map-reduce']).default('auto'),
+  // CI gate policy (see CiFailOn) — when the posted review should BLOCK
+  // (REQUEST_CHANGES + fail the check) vs just comment. Default: block on critical.
+  ci_fail_on: CiFailOn.default('critical'),
+});
+export type AgentManifest = z.infer<typeof AgentManifest>;
+/** Caller-facing input type — `.default()` fields stay optional. */
+export type AgentManifestInput = z.input<typeof AgentManifest>;
+
 /** Request body for `POST /agents/:id/export-ci`. */
 export const CiExportInput = z.object({
   repo: z.string().min(1), // "owner/name"
@@ -261,6 +290,11 @@ export const CiInstallation = z.object({
   repo: z.string(),
   target_type: CiTarget,
   installed_at: z.string(),
+  /** D5 snapshot of the agent's version at export time (AC-18). */
+  version: z.number().int().nullable(),
+  /** Derived: the latest CI run's status for this installation, or null when
+   *  the installation has no runs yet (AC-18, per-repo status on the CI tab). */
+  status: z.string().nullish(),
 });
 export type CiInstallation = z.infer<typeof CiInstallation>;
 
@@ -269,6 +303,20 @@ export const CiExport = z.object({
   installation: CiInstallation,
   files: z.array(CiFile),
   pr_url: z.string().nullable(),
+  /**
+   * Per-installation ingest secret — returned ONCE, at export time. Read
+   * surfaces (e.g. re-fetching the installation later) always return `null`
+   * here; the secret itself travels back to the ingest endpoint in a request
+   * HEADER, never in a body field (see `CiIngestInput`).
+   */
+  ingest_secret: z.string().nullable(),
+  /**
+   * Machine-readable reason the PR could not be opened (e.g.
+   * `github_token_missing` / `github_api_error`), when `action=open_pr` for a
+   * GitHub Actions target degraded to files-only (AC-26). `null` when the PR
+   * opened successfully or when no PR was attempted.
+   */
+  pr_open_reason: z.string().nullish(),
 });
 export type CiExport = z.infer<typeof CiExport>;
 
@@ -288,6 +336,9 @@ export const CiRun = z.object({
   source: z.string().nullable(),
   agent: z.string().nullish(),
   duration_s: z.number().nullish(),
+  /** Resolved from the joined `ci_installations.repo` (nullish so existing
+   *  callers/fixtures that predate this field still parse). */
+  repo: z.string().nullish(),
 });
 export type CiRun = z.infer<typeof CiRun>;
 
@@ -308,6 +359,23 @@ export const CiResultArtifact = z.object({
 });
 export type CiResultArtifact = z.infer<typeof CiResultArtifact>;
 
+/**
+ * Request body for the CI ingest endpoint (`POST /ci/ingest` or similar).
+ * Built FROM `CiResultArtifact` — do not redefine the artifact shape here.
+ * The per-installation secret is NOT part of this body; it travels in a
+ * request header instead (see `CiExport.ingest_secret`).
+ */
+export const CiIngestInput = z.object({
+  installation_id: z.string(),
+  pr_number: z.number().int().nullish(),
+  /** ISO-8601 timestamp of the CI run — the deterministic component of the
+   *  idempotency key `(installation, pr_number, ran_at)` so replays don't
+   *  duplicate (AC-23). */
+  ran_at: z.string().datetime(),
+  results: z.array(CiResultArtifact).min(1),
+});
+export type CiIngestInput = z.infer<typeof CiIngestInput>;
+
 // ===========================================================================
 // Conformance (PRD ↔ PR) — API record (the analysis shape is `Conformance`)
 // ===========================================================================
@@ -316,7 +384,7 @@ export type CiResultArtifact = z.infer<typeof CiResultArtifact>;
 export const ConformanceInput = z.object({
   /** Spec path/id to compare against; if omitted, the first available spec. */
   spec: z.string().nullish(),
-  provider: z.enum(['openai', 'anthropic']).nullish(),
+  provider: z.enum(['openai', 'anthropic', 'openrouter']).nullish(),
   model: z.string().nullish(),
 });
 export type ConformanceInput = z.infer<typeof ConformanceInput>;

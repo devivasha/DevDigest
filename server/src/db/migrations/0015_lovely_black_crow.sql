@@ -1,0 +1,1 @@
+CREATE INDEX "ci_installations_agent_idx" ON "ci_installations" USING btree ("agent_id");
