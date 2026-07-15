@@ -1,0 +1,2 @@
+CREATE INDEX "agent_runs_multi_agent_run_idx" ON "agent_runs" USING btree ("multi_agent_run_id");--> statement-breakpoint
+CREATE INDEX "multi_agent_runs_pr_ws_idx" ON "multi_agent_runs" USING btree ("pr_id","workspace_id");

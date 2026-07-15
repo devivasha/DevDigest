@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
-import { RunReviewDropdown } from "../RunReviewDropdown";
+import { AgentPicker } from "../AgentPicker";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
 
@@ -89,13 +89,10 @@ export function PrDetailHeader({
           >
             View on GitHub
           </Button>
-          {prId && (
-            <RunReviewDropdown
-              prId={prId}
-              warnMerged={pr.status === "merged" || pr.status === "closed"}
-              onRunStart={handleRunStart}
-              onRunsStarted={handleRunsStarted}
-            />
+          {/* Run Review lives on the Overview tab only — the Agent runs / Files
+              changed tabs don't repeat it. */}
+          {tab === "overview" && prId && (
+            <AgentPicker prId={prId} onRunStart={handleRunStart} onRunsStarted={handleRunsStarted} />
           )}
         </div>
       </div>

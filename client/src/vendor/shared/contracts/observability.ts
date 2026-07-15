@@ -44,6 +44,10 @@ export const AgentColumn = z.object({
   summary: z.string().nullable(),
   duration_ms: z.number().int().nullable(),
   cost_usd: z.number().nullable(),
+  /** Persisted failure reason (`agent_runs.error`) — reload-safe (AC-16).
+   * Null/absent when the column hasn't failed, or failed with no recorded
+   * reason. Optional for backward-compat with any already-serialized payload. */
+  error: z.string().nullish(),
   findings: z.array(AgentColumnFinding),
 });
 export type AgentColumn = z.infer<typeof AgentColumn>;

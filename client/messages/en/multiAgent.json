@@ -1,0 +1,84 @@
+{
+  "picker": {
+    "runReview": "Run multi-agent review ({count})",
+    "runReviewAriaLabel": "Run multi-agent review with {count} selected agent(s)",
+    "trigger": "Run Review",
+    "title": "Pick agents to run",
+    "configureAgents": "Configure agents…",
+    "clear": "Clear",
+    "clearAriaLabel": "Clear selected agents",
+    "selectAgentAriaLabel": "Select {name} for this review",
+    "selectedCount": "{count} selected",
+    "emptyState": "No agents available. Configure agents to get started."
+  },
+  "configure": {
+    "title": "Configure multi-agent review",
+    "pickPrFirst": "Pick a pull request first",
+    "prSelectorLabel": "Pull request",
+    "agentsLabel": "Agents",
+    "agentsToRun": "Agents to run",
+    "selectAll": "Select all",
+    "noAgentsSelected": "Select at least one agent to see an estimate.",
+    "estimateUnknown": "no estimate yet",
+    "estimateApprox": "≈{value}",
+    "estimateDurationApprox": "≈{duration}",
+    "estimateCostApprox": "≈{cost}",
+    "summaryLine": "{count} agents · parallel fan-out · est. {duration} · est. {cost}",
+    "parallelFanOut": "parallel fan-out",
+    "estimatesApproximate": "Estimates are approximate and won't block launch.",
+    "launch": "Launch review",
+    "launching": "Launching…"
+  },
+  "columns": {
+    "status": {
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "statusAriaLabel": "{agentName}: {status}",
+    "viewTrace": "View trace",
+    "viewTraceAriaLabel": "View trace for {agentName}",
+    "findingsCount": "{count, plural, one {# finding} other {# findings}}",
+    "costLabel": "Cost",
+    "costUnknown": "cost unknown",
+    "failedReason": "Failed: {reason}"
+  },
+  "tabs": {
+    "tabAriaLabel": "{agentName} · score {score} · {count, plural, one {# finding} other {# findings}}",
+    "findingsCount": "{count, plural, one {# finding} other {# findings}}",
+    "noFindings": "No findings from this agent."
+  },
+  "finding": {
+    "confidence": "Confidence",
+    "confShort": "{pct}% conf",
+    "suggestedFix": "Suggested fix",
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "accepted": "accepted",
+    "dismissed": "dismissed",
+    "learn": "Learn",
+    "turnIntoEvalCase": "Turn into eval case",
+    "replyToAuthor": "Reply to author"
+  },
+  "disagreement": {
+    "title": "Where agents disagree",
+    "showOnlyConflicts": "Show only conflicts",
+    "didNotFlag": "did not flag",
+    "emptyState": "All agents agreed — no conflicts to show.",
+    "conflictsCount": "{count, plural, one {# conflict} other {# conflicts}}"
+  },
+  "viewMode": {
+    "columns": "Columns",
+    "tabs": "Tabs",
+    "toggleAriaLabel": "Switch between columns and tabs view"
+  },
+  "results": {
+    "title": "Multi-Agent Review",
+    "loading": "Loading multi-agent review…",
+    "errorTitle": "Couldn't load this run",
+    "restoredNotice": "Restored from the last known status.",
+    "configureRun": "Configure run",
+    "subtitleAgents": "{count} selected agents · parallel",
+    "metaLine": "{count} agents · fan-out via worktrees · {duration} total · {cost}"
+  }
+}

@@ -30,4 +30,5 @@ export * from './contracts/why';
 export * from './contracts/eval-ci';
 export * from './contracts/observability';
 export * from './contracts/productionize';
+export * from './contracts/multi-agent-api';
 export * from './adapters';
