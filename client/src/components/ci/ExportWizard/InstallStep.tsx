@@ -17,6 +17,16 @@ export interface InstallStepProps {
   fileCount: number;
 }
 
+/** Uppercase section heading — matches the Preview/Configure steps. */
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: "var(--text-muted)",
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  marginBottom: 8,
+};
+
 /** Step 4/4 — "Open a PR" (gha only, AC-10) and "Copy files as a zip" (always
  *  available, AC-12 — works even when `pr_url` degrades to null, AC-26). Both
  *  paths go through the SAME `useExportCi` mutation so the zip is always built
@@ -64,18 +74,27 @@ export function InstallStep({ agentId, agentSlug, form, fileCount }: InstallStep
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
       {canOpenPr ? (
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: "var(--text-primary)" }}>
-            {t("exportWizard.installCardTitle")}
-          </div>
+          <div style={sectionLabelStyle}>{t("exportWizard.installCardTitle")}</div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
             {t("exportWizard.installCardBody", {
               repo: form.repo || t("exportWizard.ownerRepo"),
               count: fileCount,
             })}
           </div>
-          <Button kind="primary" icon="GitPullRequest" onClick={handleOpenPr} loading={exportMutation.isPending}>
-            {exportMutation.isPending ? t("exportWizard.installing") : t("exportWizard.install")}
-          </Button>
+          {result?.pr_url ? (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+                {t("exportWizard.prOpened")}
+              </div>
+              <a href={result.pr_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("exportWizard.viewPr")}
+              </a>
+            </>
+          ) : (
+            <Button kind="primary" icon="GitPullRequest" onClick={handleOpenPr} loading={exportMutation.isPending}>
+              {exportMutation.isPending ? t("exportWizard.installing") : t("exportWizard.install")}
+            </Button>
+          )}
           {exportMutation.isError && (
             <div role="alert" style={{ fontSize: 12.5, color: "var(--crit)", marginTop: 8 }}>
               {t("exportWizard.exportFailed")}
@@ -86,13 +105,6 @@ export function InstallStep({ agentId, agentSlug, form, fileCount }: InstallStep
               {t("exportWizard.prDegraded")}
             </div>
           )}
-          {result?.pr_url && (
-            <div style={{ fontSize: 13, marginTop: 8 }}>
-              <a href={result.pr_url} target="_blank" rel="noreferrer">
-                {result.pr_url}
-              </a>
-            </div>
-          )}
         </div>
       ) : (
         <div role="note" style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -101,6 +113,10 @@ export function InstallStep({ agentId, agentSlug, form, fileCount }: InstallStep
       )}
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+        <div style={sectionLabelStyle}>{t("exportWizard.zipTitle")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
+          {t("exportWizard.zipBody")}
+        </div>
         <Button kind="secondary" icon="Copy" onClick={handleZip} loading={zipping}>
           {t("exportWizard.copyZip")}
         </Button>
