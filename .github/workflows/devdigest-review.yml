@@ -4,7 +4,6 @@ on:
     types:
       - opened
       - synchronize
-      - reopened
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -18,7 +17,7 @@ jobs:
       - name: Run DevDigest review
         run: node .devdigest/runner/index.js
         env:
-          DEVDIGEST_POST_AS: github_review
+          DEVDIGEST_POST_AS: pr_comment
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEVDIGEST_INGEST_TOKEN: ${{ secrets.DEVDIGEST_INGEST_TOKEN }}
