@@ -1,5 +1,5 @@
 {
-  "id": "840f595f-976c-475c-8831-45b37acfbf42",
+  "id": "63409f43-64d2-4fc7-9c03-f525eaf3d4ba",
   "prevId": "a5ddfae7-c1c1-43ab-a5a8-0f23fbc9ab7f",
   "version": "7",
   "dialect": "postgresql",
@@ -2772,7 +2772,7 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {}
       "uniqueConstraints": {
         "ci_runs_installation_pr_ranat_uq": {
           "name": "ci_runs_installation_pr_ranat_uq",
@@ -2813,6 +2813,12 @@
         },
         "pr_id": {
           "name": "pr_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "multi_agent_run_id": {
+          "name": "multi_agent_run_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2938,6 +2944,19 @@
           "tableTo": "pull_requests",
           "columnsFrom": [
             "pr_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "agent_runs_multi_agent_run_id_multi_agent_runs_id_fk": {
+          "name": "agent_runs_multi_agent_run_id_multi_agent_runs_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "multi_agent_runs",
+          "columnsFrom": [
+            "multi_agent_run_id"
           ],
           "columnsTo": [
             "id"

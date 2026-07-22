@@ -2654,6 +2654,8 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        }
+      },
         },
         "ingest_secret_hash": {
           "name": "ingest_secret_hash",
@@ -2772,7 +2774,6 @@
           "notNull": false
         }
       },
-      "indexes": {},
       "foreignKeys": {
         "ci_runs_ci_installation_id_ci_installations_id_fk": {
           "name": "ci_runs_ci_installation_id_ci_installations_id_fk",
@@ -2829,6 +2830,12 @@
         },
         "pr_id": {
           "name": "pr_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "multi_agent_run_id": {
+          "name": "multi_agent_run_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2920,7 +2927,23 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "agent_runs_multi_agent_run_idx": {
+          "name": "agent_runs_multi_agent_run_idx",
+          "columns": [
+            {
+              "expression": "multi_agent_run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "agent_runs_workspace_id_workspaces_id_fk": {
           "name": "agent_runs_workspace_id_workspaces_id_fk",
@@ -2954,6 +2977,19 @@
           "tableTo": "pull_requests",
           "columnsFrom": [
             "pr_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "agent_runs_multi_agent_run_id_multi_agent_runs_id_fk": {
+          "name": "agent_runs_multi_agent_run_id_multi_agent_runs_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "multi_agent_runs",
+          "columnsFrom": [
+            "multi_agent_run_id"
           ],
           "columnsTo": [
             "id"
@@ -2999,7 +3035,29 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "multi_agent_runs_pr_ws_idx": {
+          "name": "multi_agent_runs_pr_ws_idx",
+          "columns": [
+            {
+              "expression": "pr_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "multi_agent_runs_workspace_id_workspaces_id_fk": {
           "name": "multi_agent_runs_workspace_id_workspaces_id_fk",

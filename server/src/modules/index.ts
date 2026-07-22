@@ -15,6 +15,7 @@ import brief from "./brief/routes.js";
 import projectContext from "./project-context/routes.js";
 import onboarding from "./onboarding/routes.js";
 import evalModule from "./eval/routes.js";
+import multiAgentRuns from "./multi-agent-runs/routes.js";
 import ciModule from "./ci/routes.js";
 
 /**
@@ -47,5 +48,6 @@ export const modules: Record<string, FastifyPluginAsync> = {
   projectContext,
   onboarding,
   eval: evalModule,
+  multiAgentRuns,
   ci: ciModule,
 };
