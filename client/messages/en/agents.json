@@ -121,5 +121,34 @@
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
+  },
+  "ciTab": {
+    "heading": "Continuous Integration",
+    "subtitle": "Deploy this agent to run automatically on pull requests.",
+    "addToCi": "Add to CI",
+    "loadError": "Could not load CI data for this agent.",
+    "failOn": {
+      "label": "Fail CI on",
+      "hint": "Changes take effect after re-export."
+    },
+    "installations": {
+      "title": "Installations",
+      "empty": "Not installed in any repository yet.",
+      "repo": "Repository",
+      "status": "Status",
+      "version": "Version",
+      "installed": "Installed",
+      "noVersion": "—"
+    },
+    "runs": {
+      "title": "CI run history",
+      "empty": "No CI runs yet for this agent.",
+      "pullRequest": "Pull request",
+      "status": "Status",
+      "findings": "Findings",
+      "cost": "Cost",
+      "duration": "Duration",
+      "view": "View"
+    }
   }
 }

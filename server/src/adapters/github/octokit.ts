@@ -22,6 +22,15 @@ function mapStatus(state: string, merged: boolean | undefined): PrStatus {
   return 'open';
 }
 
+/** True when a `pulls.create` failed only because a PR already exists for the
+ *  head branch (GitHub 422 with an "already exists" validation error). */
+function isPrAlreadyExists(err: unknown): boolean {
+  const e = err as { status?: number; response?: { data?: { errors?: { message?: string }[] } } };
+  if (e?.status !== 422) return false;
+  const errors = e.response?.data?.errors ?? [];
+  return errors.some((x) => /already exists/i.test(x?.message ?? ''));
+}
+
 /**
  * GitHubClient over Octokit REST — thin. PAT auth (fine-grained).
  * Reads PR list/detail/files/commits/issue; posts reviews; opens PRs.
@@ -246,15 +255,34 @@ export class OctokitGitHubClient implements GitHubClient {
     return withRetry(() =>
       withTimeout(
         (async () => {
-          const res = await this.octokit.rest.pulls.create({
-            owner: repo.owner,
-            repo: repo.name,
-            title: payload.title,
-            head: payload.head,
-            base: payload.base,
-            body: payload.body,
-          });
-          return { url: res.data.html_url };
+          try {
+            const res = await this.octokit.rest.pulls.create({
+              owner: repo.owner,
+              repo: repo.name,
+              title: payload.title,
+              head: payload.head,
+              base: payload.base,
+              body: payload.body,
+            });
+            return { url: res.data.html_url };
+          } catch (err) {
+            // A PR from this head branch may already be open (e.g. a prior
+            // export to the same repo). GitHub rejects a second create with a
+            // 422 "A pull request already exists". Treat that as success by
+            // returning the existing PR's URL, so re-running Install surfaces
+            // the link instead of degrading.
+            if (!isPrAlreadyExists(err)) throw err;
+            const existing = await this.octokit.rest.pulls.list({
+              owner: repo.owner,
+              repo: repo.name,
+              state: 'open',
+              head: `${repo.owner}:${payload.head}`,
+              per_page: 1,
+            });
+            const url = existing.data[0]?.html_url;
+            if (!url) throw err;
+            return { url };
+          }
         })(),
         TIMEOUT,
       ),
