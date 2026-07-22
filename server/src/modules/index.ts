@@ -16,6 +16,7 @@ import projectContext from "./project-context/routes.js";
 import onboarding from "./onboarding/routes.js";
 import evalModule from "./eval/routes.js";
 import multiAgentRuns from "./multi-agent-runs/routes.js";
+import ciModule from "./ci/routes.js";
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -48,4 +49,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
   onboarding,
   eval: evalModule,
   multiAgentRuns,
+  ci: ciModule,
 };

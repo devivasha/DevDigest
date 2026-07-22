@@ -2654,6 +2654,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "ingest_secret_hash": {
+          "name": "ingest_secret_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -2736,6 +2748,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -2754,8 +2772,18 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "compositePrimaryKeys": {}
+      "uniqueConstraints": {
+        "ci_runs_installation_pr_ranat_uq": {
+          "name": "ci_runs_installation_pr_ranat_uq",
+          "nullsNotDistinct": true,
+          "columns": [
+            "ci_installation_id",
+            "pr_number",
+            "ran_at"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

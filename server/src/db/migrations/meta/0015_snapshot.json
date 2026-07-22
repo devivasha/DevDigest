@@ -1,6 +1,6 @@
 {
-  "id": "d51c9bb6-5524-426c-a952-09efe39de855",
-  "prevId": "63409f43-64d2-4fc7-9c03-f525eaf3d4ba",
+  "id": "317b2f1e-2a2b-4463-8170-502969f91da9",
+  "prevId": "840f595f-976c-475c-8831-45b37acfbf42",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2656,7 +2656,37 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+        },
+        "ingest_secret_hash": {
+          "name": "ingest_secret_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "ci_installations_agent_idx": {
+          "name": "ci_installations_agent_idx",
+          "columns": [
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "ci_installations_agent_id_agents_id_fk": {
           "name": "ci_installations_agent_id_agents_id_fk",
@@ -2736,9 +2766,14 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
       "foreignKeys": {
         "ci_runs_ci_installation_id_ci_installations_id_fk": {
           "name": "ci_runs_ci_installation_id_ci_installations_id_fk",
@@ -2755,7 +2790,17 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "ci_runs_installation_pr_ranat_uq": {
+          "name": "ci_runs_installation_pr_ranat_uq",
+          "nullsNotDistinct": true,
+          "columns": [
+            "ci_installation_id",
+            "pr_number",
+            "ran_at"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
